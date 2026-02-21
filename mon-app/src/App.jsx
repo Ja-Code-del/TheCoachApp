@@ -1,82 +1,133 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGear, faExpand, faShareNodes } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faXmark, faShareNodes } from '@fortawesome/free-solid-svg-icons';
 
 function App() {
-  // --- 1. LES ÉTATS (La mémoire de l'app) ---
+  // --- 1. ÉTATS (STATES) ---
   const [targetDate, setTargetDate] = useState("2026-12-31");
   const [daysLeft, setDaysLeft] = useState(0);
-  const [category, setCategory] = useState("voyage"); // Par défaut
+  const [category, setCategory] = useState("voyage");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Une petite base de citations pour commencer
   const quotes = {
     voyage: { text: "Le plus beau voyage, c'est celui qu'on n'a pas encore fait.", author: "Loïck Peyron" },
     examen: { text: "Le succès est la somme de petits efforts répétés jour après jour.", author: "Robert Collier" },
-    mariage: { text: "Aimer, ce n'est pas se regarder l'un l'autre, c'est regarder ensemble dans la même direction.", author: "St-Exupéry" }
+    mariage: { text: "Aimer, ce n'est pas se regarder l'un l'autre, c'est regarder ensemble dans la même direction.", author: "St-Exupéry" },
+    rencard: { text: "Le bonheur est la seule chose qui se double si on le partage.", author: "Albert Schweitzer" },
+    perdre_du_poids: { text: "La motivation vous fait débuter, l'habitude vous fait continuer.", author: "Jim Ryun" }
   };
 
-  // --- 2. LA LOGIQUE DU COMPTE À REBOURS ---
+  // --- 2. LOGIQUE AMÉLIORÉE (Grâce à tes retours !) ---
   useEffect(() => {
     const calculate = () => {
-      const diff = +new Date(targetDate) - +new Date();
-      setDaysLeft(Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24))));
+      // Correction du décalage UTC : On parse manuellement
+      const [y, m, d] = targetDate.split('-').map(Number);
+      const target = new Date(y, m - 1, d);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // On se base sur le début de journée locale
+
+      const diff = target.getTime() - today.getTime();
+      const days = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+      
+      setDaysLeft(days);
     };
+
     calculate();
-    const timer = setInterval(calculate, 60000); // Mise à jour toutes les minutes
-    return () => clearInterval(timer);
+    
+    // Mise à jour chaque minute pour éviter que le compteur stagne
+    const id = setInterval(calculate, 60000);
+    return () => clearInterval(id);
   }, [targetDate]);
 
   return (
-    // Fond dégradé dynamique
-    <div className="min-h-screen bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-700 flex flex-col items-center justify-center p-6 font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-[#1a2a6c] via-[#b21f1f] to-[#fdbb2d] flex items-center justify-center p-6 font-sans">
       
-      {/* --- LE WIDGET LIQUID GLASS --- */}
-      <div className="relative w-full max-w-sm p-8 rounded-[2.5rem] bg-white/10 backdrop-blur-2xl border border-white/30 shadow-[0_20px_50px_rgba(0,0,0,0.2)] text-white overflow-hidden">
+      {/* WIDGET PRINCIPAL */}
+      <div className="relative w-full max-w-sm h-[520px] overflow-hidden rounded-[3rem] bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] text-white">
         
-        {/* Reflet de lumière (Effet Apple Liquid Glass) */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-white/20 rounded-full blur-3xl"></div>
+        {/* Effet de reflet "Liquid Glass" */}
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
 
-        {/* Barre d'outils haute */}
-        <div className="flex justify-between items-center mb-10 relative z-10">
-          <button className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition">
-            <FontAwesomeIcon icon={faExpand} className="text-sm opacity-80" />
-          </button>
-          <button className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition">
-            <FontAwesomeIcon icon={faGear} className="text-sm opacity-80" />
-          </button>
-        </div>
+        {!isSettingsOpen ? (
+          /* --- VUE AFFICHAGE --- */
+          <div className="p-10 h-full flex flex-col justify-between items-center text-center">
+            
+            <div className="w-full flex justify-end">
+              <button onClick={() => setIsSettingsOpen(true)} className="p-3 hover:bg-white/10 rounded-full transition-colors">
+                <FontAwesomeIcon icon={faGear} className="text-xl opacity-70" />
+              </button>
+            </div>
 
-        {/* Affichage des jours */}
-        <div className="text-center space-y-2 relative z-10">
-          <div className="text-7xl font-extrabold tracking-tighter drop-shadow-md">
-            {daysLeft}
+            <div className="flex flex-col items-center">
+              <span className="text-8xl font-black tracking-tighter drop-shadow-2xl">
+                {daysLeft}
+              </span>
+              <span className="text-xs uppercase tracking-[0.5em] font-bold opacity-50 mt-2">
+                Jours restants
+              </span>
+            </div>
+
+            <div className="w-full bg-white/5 backdrop-blur-md p-6 rounded-[2rem] border border-white/10 shadow-inner">
+              <p className="text-lg italic font-light leading-snug">
+                "{quotes[category].text}"
+              </p>
+              <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">
+                — {quotes[category].author}
+              </p>
+            </div>
+
+            <button className="w-full py-4 bg-white text-gray-900 font-bold rounded-2xl flex items-center justify-center gap-3 hover:scale-105 transition shadow-xl">
+              <FontAwesomeIcon icon={faShareNodes} /> Partager le moment
+            </button>
+
           </div>
-          <div className="text-sm uppercase tracking-[0.3em] font-medium opacity-70">
-            Jours restants
+        ) : (
+          /* --- VUE RÉGLAGES --- */
+          <div className="p-10 h-full flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="flex justify-between items-center mb-10">
+              <h2 className="text-2xl font-bold tracking-tight">Réglages</h2>
+              <button onClick={() => setIsSettingsOpen(false)} className="w-8 h-8 flex items-center justify-center bg-white/10 rounded-full">
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+
+            <div className="space-y-8">
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] uppercase font-black tracking-widest opacity-40 ml-1">Événement le :</label>
+                <input 
+                  type="date" 
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  className="bg-white/10 border border-white/20 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-white/50 transition"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] uppercase font-black tracking-widest opacity-40 ml-1">Type d'objectif :</label>
+                <select 
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="bg-white/10 border border-white/20 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-white/50 transition appearance-none cursor-pointer"
+                >
+                  <option value="voyage" className="bg-gray-800">✈️ Voyage</option>
+                  <option value="examen" className="bg-gray-800">📚 Examens</option>
+                  <option value="mariage" className="bg-gray-800">💍 Mariage</option>
+                  <option value="rencard" className="bg-gray-800">❤️ Rencard</option>
+                  <option value="perdre_du_poids" className="bg-gray-800">💪 Forme physique</option>
+                </select>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setIsSettingsOpen(false)}
+              className="mt-auto w-full py-4 bg-white/20 border border-white/30 text-white font-bold rounded-2xl hover:bg-white/30 transition shadow-lg"
+            >
+              Terminer
+            </button>
           </div>
-        </div>
-
-        {/* Citation du jour */}
-        <div className="mt-12 p-5 rounded-2xl bg-black/5 border border-white/10 relative z-10">
-          <p className="text-lg leading-snug italic font-light">
-            "{quotes[category].text}"
-          </p>
-          <p className="mt-3 text-xs font-bold uppercase tracking-widest opacity-50">
-            — {quotes[category].author}
-          </p>
-        </div>
-
-        {/* Bouton de partage */}
-        <button className="mt-8 w-full py-4 bg-white text-blue-900 font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-opacity-90 transition transform active:scale-95 shadow-xl">
-          <FontAwesomeIcon icon={faShareNodes} />
-          Partager l'image
-        </button>
+        )}
       </div>
-
-      {/* Petit message d'aide temporaire */}
-      <p className="mt-8 text-white/40 text-sm italic font-light">
-        Astuce : Change la variable "category" dans le code pour voir les autres citations.
-      </p>
     </div>
   );
 }
