@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGear, faXmark, faShareNodes, faRotate } from '@fortawesome/free-solid-svg-icons';
+import html2canvas from 'html2canvas';
 
 // --- CONFIGURATION DES POLICES ---
 const FONTS = [
@@ -61,55 +62,55 @@ async function fetchUnsplashImage(theme) {
   };
 }
 
-// --- APPEL CHATGPT ---
+// --- APPEL OPENAI ---
 async function fetchAIQuote(theme, daysLeft) {
-const key = import.meta.env.VITE_OPENAI_API_KEY;
-const urgency =
-daysLeft <= 7 ? "urgente et intense" :
-daysLeft <= 30 ? "motivante et proche" :
-"patiente et inspirante";
+  const key = import.meta.env.VITE_OPENAI_API_KEY;
+  const urgency =
+    daysLeft <= 7 ? "urgente et intense" :
+    daysLeft <= 30 ? "motivante et proche" :
+    "patiente et inspirante";
 
-const res = await fetch('https://api.openai.com/v1/chat/completions', {
-method: 'POST',
-headers: {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${key}`,
-},
-body: JSON.stringify({
-  model: 'gpt-4o-mini',
-  max_tokens: 120,
-  response_format: { type: "json_object" }, // Sécurité supplémentaire
-  messages: [
-    {
-      role: 'system',
-      content: `Tu es un assistant qui génère des citations courtes au format JSON. 
-      Structure : {"text": "...", "author": "..."}`
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
     },
-    {
-      role: 'user',
-      content: `Thème : "${theme}". Jours restants : ${daysLeft}. Tonalité : ${urgency}.`
-    },
-  ],
-}),
-});
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      max_tokens: 120,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: 'system',
+          content: `Tu es un assistant qui génère des citations célèbres et courtes au format JSON. 
+          Structure : {"text": "...", "author": "..."}`
+        },
+        {
+          role: 'user',
+          content: `Thème : "${theme}". Jours restants : ${daysLeft}. Tonalité : ${urgency}.`
+        },
+      ],
+    }),
+  });
 
-if (!res.ok) throw new Error('OpenAI API error');
-const data = await res.json();
-const raw = data.choices[0].message.content; // C'est une chaîne de caractères type '{"text": "...", "author": "..."}'
-return JSON.parse(raw); // On transforme la chaîne en objet JavaScript pur
+  if (!res.ok) throw new Error('OpenAI API error');
+  const data = await res.json();
+  return JSON.parse(data.choices[0].message.content);
 }
 
 function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || "voyage en Islande");
+  const widgetRef = useRef(null); // Référence sur le widget pour html2canvas
+
   const [targetDate, setTargetDate] = useState(() => localStorage.getItem('targetDate') || "2026-12-31");
-  const [selectedFontId, setSelectedFontId] = useState(() => localStorage.getItem('fontId') || 'inter');
-  
   const [daysLeft, setDaysLeft] = useState(0);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || "voyage en Islande");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [selectedFontId, setSelectedFontId] = useState(() => localStorage.getItem('fontId') || 'inter');
 
   // États citation
   const [quote, setQuote] = useState(() => JSON.parse(localStorage.getItem('quote')) || { text: "Entrez un thème pour générer votre citation...", author: "" });
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState(null);
 
   // États image
@@ -117,9 +118,13 @@ function App() {
   const [photographer, setPhotographer] = useState(() => JSON.parse(localStorage.getItem('photographer')) || null);
   const [isLoadingImage, setIsLoadingImage] = useState(false);
 
+  // État partage
+  const [shareError, setShareError] = useState(null);
+  const [isSharing, setIsSharing] = useState(false);
+
   const currentFont = FONTS.find(f => f.id === selectedFontId) || FONTS[0];
 
-  // -- Ecouter les changements pour sauvegarder dans localStorage ---
+  // --- Persistance localStorage ---
   useEffect(() => {
     localStorage.setItem('theme', theme);
     localStorage.setItem('targetDate', targetDate);
@@ -127,9 +132,9 @@ function App() {
     localStorage.setItem('quote', JSON.stringify(quote));
     localStorage.setItem('bgImage', bgImage || '');
     localStorage.setItem('photographer', JSON.stringify(photographer));
-}, [theme, targetDate, selectedFontId, quote, bgImage, photographer]);
-  
-// --- Calcul des jours ---
+  }, [theme, targetDate, selectedFontId, quote, bgImage, photographer]);
+
+  // --- Calcul des jours ---
   useEffect(() => {
     const calculate = () => {
       const [y, m, d] = targetDate.split('-').map(Number);
@@ -176,10 +181,48 @@ function App() {
     }
   }, [theme]);
 
-  // --- Sauvegarde réglages : déclenche les deux appels ---
+  // --- Sauvegarde réglages ---
   const handleSaveSettings = async () => {
     setIsSettingsOpen(false);
     await Promise.all([generateQuote(), loadImage()]);
+  };
+
+  // --- Partage ---
+  const handleShare = async () => {
+    if (!widgetRef.current) return;
+    setIsSharing(true);
+    setShareError(null);
+
+    try {
+      const canvas = await html2canvas(widgetRef.current, {
+        useCORS: true,       // Nécessaire pour charger l'image Unsplash cross-origin
+        scale: 2,            // Résolution x2 pour un rendu net sur mobile
+        backgroundColor: null,
+      });
+
+      // Convertir le canvas en Blob (fichier image PNG)
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      const file = new File([blob], 'countdown.png', { type: 'image/png' });
+
+      // Vérifier si le navigateur supporte le partage de fichiers
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Plus que ${daysLeft} jours !`,
+          text: `"${quote.text}" — ${quote.author}`,
+        });
+      } else {
+        setShareError("Partage non supporté sur ce navigateur.");
+      }
+    } catch (e) {
+      // L'utilisateur a annulé le partage — pas une vraie erreur
+      if (e.name !== 'AbortError') {
+        console.error('Erreur partage:', e);
+        setShareError("Partage non supporté sur ce navigateur.");
+      }
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   return (
@@ -191,6 +234,7 @@ function App() {
 
       <div className="min-h-screen bg-gradient-to-br from-[#1a2a6c] via-[#b21f1f] to-[#fdbb2d] flex items-center justify-center p-6 font-sans">
         <div
+          ref={widgetRef}
           className="relative w-full max-w-sm h-[520px] overflow-hidden rounded-[3rem] border border-white/20 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] text-white transition-all duration-700"
           style={{
             backgroundImage: bgImage ? `url(${bgImage})` : undefined,
@@ -204,7 +248,7 @@ function App() {
           {/* Liquid glass */}
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Crédit Unsplash — obligatoire selon les CGU */}
+          {/* Crédit Unsplash */}
           {photographer && (
             <a
               href={`${photographer.url}?utm_source=countdown_app&utm_medium=referral`}
@@ -258,7 +302,6 @@ function App() {
                     )}
                   </>
                 )}
-                {/* Bouton nouvelle citation manuelle */}
                 <button
                   onClick={generateQuote}
                   disabled={isLoadingQuote}
@@ -269,9 +312,29 @@ function App() {
                 </button>
               </div>
 
-              <button className="w-full py-4 bg-white text-gray-900 font-bold rounded-2xl flex items-center justify-center gap-3 hover:scale-105 transition shadow-xl">
-                <FontAwesomeIcon icon={faShareNodes} /> Partager le moment
-              </button>
+              {/* Bouton partager */}
+              <div className="w-full flex flex-col items-center gap-2">
+                <button
+                  onClick={handleShare}
+                  disabled={isSharing}
+                  className="w-full py-4 bg-white text-gray-900 font-bold rounded-2xl flex items-center justify-center gap-3 hover:scale-105 transition shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSharing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-gray-900 rounded-full animate-spin" />
+                      Capture en cours...
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faShareNodes} /> Partager le moment
+                    </>
+                  )}
+                </button>
+                {/* Message d'erreur partage */}
+                {shareError && (
+                  <p className="text-[10px] text-red-300 opacity-80">{shareError}</p>
+                )}
+              </div>
             </div>
 
           ) : (
@@ -285,7 +348,6 @@ function App() {
               </div>
 
               <div className="space-y-7">
-                {/* Thème libre */}
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] uppercase font-black tracking-widest opacity-40 ml-1">Mon thème :</label>
                   <input
@@ -298,7 +360,6 @@ function App() {
                   <p className="text-[10px] opacity-30 ml-1">Une image et une citation seront générées pour ce thème.</p>
                 </div>
 
-                {/* Date */}
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] uppercase font-black tracking-widest opacity-40 ml-1">Événement le :</label>
                   <input
@@ -309,7 +370,6 @@ function App() {
                   />
                 </div>
 
-                {/* Police */}
                 <div className="flex flex-col gap-3">
                   <label className="text-[10px] uppercase font-black tracking-widest opacity-40 ml-1">Police :</label>
                   <div className="grid grid-cols-1 gap-2">
