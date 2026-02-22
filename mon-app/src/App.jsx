@@ -47,12 +47,9 @@ const FONTS = [
   },
 ];
 
-// --- APPEL UNSPLASH ---
+// --- APPEL proxy Vercel pour UNSPLASH ---
 async function fetchUnsplashImage(theme) {
-  const key = import.meta.env.VITE_UNSPLASH_ACCESS_KEY;
-  const res = await fetch(
-    `https://api.unsplash.com/photos/random?query=${encodeURIComponent(theme)}&orientation=portrait&client_id=${key}`
-  );
+  const res = await fetch(`/api/image?theme=${encodeURIComponent(theme)}`);
   if (!res.ok) throw new Error('Unsplash error');
   const data = await res.json();
   return {
@@ -62,41 +59,15 @@ async function fetchUnsplashImage(theme) {
   };
 }
 
-// --- APPEL OPENAI ---
+// --- APPEL proxy Vercel pour AI ---
 async function fetchAIQuote(theme, daysLeft) {
-  const key = import.meta.env.VITE_OPENAI_API_KEY;
-  const urgency =
-    daysLeft <= 7 ? "urgente et intense" :
-    daysLeft <= 30 ? "motivante et proche" :
-    "patiente et inspirante";
-
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch('/api/quote', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      max_tokens: 120,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: 'system',
-          content: `Tu es un assistant qui génère des citations célèbres et courtes au format JSON. 
-          Structure : {"text": "...", "author": "..."}`
-        },
-        {
-          role: 'user',
-          content: `Thème : "${theme}". Jours restants : ${daysLeft}. Tonalité : ${urgency}.`
-        },
-      ],
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme, daysLeft }),
   });
-
-  if (!res.ok) throw new Error('OpenAI API error');
-  const data = await res.json();
-  return JSON.parse(data.choices[0].message.content);
+  const quote = await res.json();
+  return quote; // Le serveur renvoie directement l'objet {text, author}
 }
 
 function App() {
