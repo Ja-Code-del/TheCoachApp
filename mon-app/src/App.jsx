@@ -50,12 +50,12 @@ const FONTS = [
 // --- APPEL proxy Vercel pour UNSPLASH ---
 async function fetchUnsplashImage(theme) {
   const res = await fetch(`/api/image?theme=${encodeURIComponent(theme)}`);
-  if (!res.ok) throw new Error('Unsplash error');
   const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Unsplash error');
   return {
-    url: data.urls.regular,
-    photographer: data.user.name,
-    photographerUrl: data.user.links.html,
+    url: data.url,
+    photographer: data.photographer,
+    photographerUrl: data.photographerUrl,
   };
 }
 
@@ -67,6 +67,8 @@ async function fetchAIQuote(theme, daysLeft) {
     body: JSON.stringify({ theme, daysLeft }),
   });
   const quote = await res.json();
+  if (!res.ok) throw new Error(quote.error || 'AI error');
+  if (!quote?.text) throw new Error('Format de citation invalide');
   return quote; // Le serveur renvoie directement l'objet {text, author}
 }
 
@@ -130,7 +132,7 @@ function App() {
       setQuote(q);
     } catch (e) {
       console.error('Erreur citation:', e);
-      setQuoteError("Impossible de générer la citation.");
+      setQuoteError(e.message || "Impossible de générer la citation.");
     } finally {
       setIsLoadingQuote(false);
     }
@@ -145,6 +147,7 @@ function App() {
       setBgImage(img.url);
       setPhotographer({ name: img.photographer, url: img.photographerUrl });
     } catch (e) {
+      console.error('Erreur image:', e);
       setBgImage(null);
       setPhotographer(null);
     } finally {

@@ -10,6 +10,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Paramètres manquants' });
   }
 
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: 'OPENAI_API_KEY manquante côté serveur' });
+  }
+
   const urgency =
     daysLeft <= 7 ? "urgente et intense" :
     daysLeft <= 30 ? "motivante et proche" :
@@ -42,12 +46,27 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      return res.status(response.status).json({ error: error.message || 'OpenAI error' });
+      let message = 'OpenAI error';
+      try {
+        const error = await response.json();
+        message = error?.error?.message || error?.message || message;
+      } catch {
+        // Réponse non JSON, on garde le message générique.
+      }
+      return res.status(response.status).json({ error: message });
     }
 
     const data = await response.json();
-    const quote = JSON.parse(data.choices[0].message.content);
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) {
+      return res.status(502).json({ error: 'Réponse OpenAI incomplète' });
+    }
+
+    const quote = JSON.parse(content);
+    if (!quote?.text) {
+      return res.status(502).json({ error: 'Format JSON de citation invalide' });
+    }
+
     return res.status(200).json(quote);
 
   } catch (error) {
