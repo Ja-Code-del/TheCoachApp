@@ -1,0 +1,22 @@
+.
+├── mon-app
+│   ├── README.md
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── public
+│   │   └── vite.svg
+│   ├── src
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   └── react.svg
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── tailwind.config.js
+│   └── vite.config.js
+└── structure.txt
+
+5 directories, 15 files
