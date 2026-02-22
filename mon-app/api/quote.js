@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
         // La clé reste côté serveur, jamais exposée au client
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.VITE_OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
