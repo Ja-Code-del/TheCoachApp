@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGear, faXmark, faShareNodes, faRotate } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faXmark, faShareNodes, faRotate, faBullseye, faWandMagicSparkles, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import html2canvas from 'html2canvas';
 
 // --- CONFIGURATION DES POLICES ---
@@ -77,7 +77,9 @@ function WelcomeScreen({ onStart, visible }) {
 
       {/* Contenu */}
       <div className="relative z-10 flex flex-col items-center gap-6">
-        <div className="text-5xl">⏳</div>
+        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+          <FontAwesomeIcon icon={faGear} className="text-white/60 text-lg" />
+        </div>
 
         <div>
           <h1 className="text-3xl font-black tracking-tight text-white">
@@ -89,18 +91,24 @@ function WelcomeScreen({ onStart, visible }) {
           </p>
         </div>
 
-        <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-left space-y-3">
+        <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-left space-y-4">
           <p className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Comment ça marche</p>
-          <div className="flex items-start gap-3">
-            <span className="text-lg">🎯</span>
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+              <FontAwesomeIcon icon={faBullseye} className="text-white/70 text-sm" />
+            </div>
             <p className="text-sm text-white/70">Choisis un thème et une date cible</p>
           </div>
-          <div className="flex items-start gap-3">
-            <span className="text-lg">✨</span>
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+              <FontAwesomeIcon icon={faWandMagicSparkles} className="text-white/70 text-sm" />
+            </div>
             <p className="text-sm text-white/70">Une citation et une image sont générées pour toi</p>
           </div>
-          <div className="flex items-start gap-3">
-            <span className="text-lg">📲</span>
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+              <FontAwesomeIcon icon={faPaperPlane} className="text-white/70 text-sm" />
+            </div>
             <p className="text-sm text-white/70">Partage le moment avec tes proches</p>
           </div>
         </div>
