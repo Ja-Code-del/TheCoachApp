@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGear, faXmark, faShareNodes, faRotate, faBullseye, faWandMagicSparkles, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import html2canvas from 'html2canvas';
 import ShareCard from './ShareCard';
-import { Analytics } from "@vercel/analytics/next";
+import { Analytics } from "@vercel/analytics/react";
 
 // --- CONFIGURATION DES POLICES ---
 const FONTS = [
