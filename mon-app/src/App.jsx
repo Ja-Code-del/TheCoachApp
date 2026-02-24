@@ -476,7 +476,7 @@ function App() {
 
             ) : (
               /* --- VUE RÉGLAGES --- */
-              <div className="relative z-10 p-8 h-full flex flex-col overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="relative z-10 p-8 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300" style={{ height: '520px', overflowY: 'auto', overscrollBehavior: 'contain' }}>
                 <div className="flex justify-between items-center mb-8">
                   <h2 className="text-2xl font-bold tracking-tight">Réglages</h2>
                   <button onClick={() => setIsSettingsOpen(false)} className="w-8 h-8 flex items-center justify-center bg-white/10 rounded-full">
