@@ -1,8 +1,14 @@
-import React from 'react';
+import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faXmark, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FONTS } from '../../constants/fonts';
 import Spinner from '../Spinner';
+
+const getTomorrowStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+};
 
 export default function WidgetSettings({
   activeEvent, eventsCount,
@@ -10,8 +16,20 @@ export default function WidgetSettings({
   isLoadingQuote, isLoadingImage,
   onUpdateEvent, onSave, onClose, onDelete,
 }) {
+  const [dateError, setDateError] = useState('');
+  const minDate = getTomorrowStr();
+
+  const handleSave = () => {
+    if (!activeEvent.targetDate || activeEvent.targetDate <= new Date().toISOString().split('T')[0]) {
+      setDateError('La date doit être dans le futur (à partir de demain).');
+      return;
+    }
+    setDateError('');
+    onSave();
+  };
+
   return (
-    <div className="relative z-10 p-8 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 h-full overflow-y-auto overscroll-contain">
+    <div className="relative z-10 p-8 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 overflow-y-auto overscroll-contain scrollbar-hide" style={{ height: '647px' }}>
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-bold tracking-tight">Réglages</h2>
         <div className="flex items-center gap-2">
@@ -61,9 +79,10 @@ export default function WidgetSettings({
 
         <div className="flex flex-col gap-2">
           <label className="text-[10px] uppercase font-black tracking-widest opacity-40 ml-1">Événement le :</label>
-          <input type="date" value={activeEvent.targetDate}
-            onChange={(e) => onUpdateEvent({ targetDate: e.target.value })}
-            className="bg-white/10 border border-white/20 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-white/50 transition text-white" />
+          <input type="date" value={activeEvent.targetDate} min={minDate}
+            onChange={(e) => { setDateError(''); onUpdateEvent({ targetDate: e.target.value }); }}
+            className={`bg-white/10 border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-white/50 transition text-white ${dateError ? 'border-red-400/60' : 'border-white/20'}`} />
+          {dateError && <p className="text-[10px] text-red-300 ml-1">{dateError}</p>}
         </div>
 
         <div className="flex flex-col gap-3">
@@ -83,7 +102,7 @@ export default function WidgetSettings({
         </div>
       </div>
 
-      <button onClick={onSave} disabled={isLoadingQuote || isLoadingImage}
+      <button onClick={handleSave} disabled={isLoadingQuote || isLoadingImage}
         className="mt-6 w-full py-4 bg-white/20 border border-white/30 text-white font-bold rounded-2xl hover:bg-white/30 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
         {(isLoadingQuote || isLoadingImage)
           ? <><Spinner />Chargement...</>
