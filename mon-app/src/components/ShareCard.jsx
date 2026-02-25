@@ -1,21 +1,20 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 
-function generateConfetti(count = 40) {
-  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98FB98'];
-  const shapes = ['circle', 'square', 'rect'];
-  return Array.from({ length: count }, (_, i) => ({
-    id: i,
-    x: (i * 7.3 + 13) % 100,
-    y: (i * 11.7 + 7) % 100,
-    color: colors[i % colors.length],
-    shape: shapes[i % shapes.length],
-    size: 6 + (i % 5) * 3,
-    rotation: (i * 37) % 360,
-    opacity: 0.6 + (i % 4) * 0.1,
-  }));
-}
+const seededRand = (i, offset = 0) => Math.abs(Math.sin(i * 127.1 + offset * 311.7));
 
-const CONFETTI = generateConfetti(40);
+const COLORS = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98FB98'];
+const SHAPES = ['circle', 'square', 'rect'];
+
+const CONFETTI = Array.from({ length: 40 }, (_, i) => ({
+  id: i,
+  x: seededRand(i, 0) * 100,
+  y: seededRand(i, 1) * 100,
+  color: COLORS[Math.floor(seededRand(i, 2) * COLORS.length)],
+  shape: SHAPES[Math.floor(seededRand(i, 3) * SHAPES.length)],
+  size: 6 + Math.floor(seededRand(i, 4) * 5) * 3,
+  rotation: Math.floor(seededRand(i, 5) * 360),
+  opacity: 0.6 + seededRand(i, 6) * 0.4,
+}));
 
 function Confetti() {
   return (
@@ -36,14 +35,14 @@ function Confetti() {
   );
 }
 
+function formatDate(targetDate) {
+  if (!targetDate) return '';
+  const [y, m, d] = targetDate.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export default function ShareCard({ cardRef, daysLeft, theme, quote, bgImage, targetDate, font, isJourJ }) {
-  const formattedDate = useMemo(() => {
-    if (!targetDate) return '';
-    const [y, m, d] = targetDate.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
-      day: 'numeric', month: 'long', year: 'numeric',
-    });
-  }, [targetDate]);
+  const formattedDate = formatDate(targetDate);
 
   return (
     <div style={{ position: 'fixed', left: '-9999px', top: '0', zIndex: -1 }}>
