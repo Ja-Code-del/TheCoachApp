@@ -26,7 +26,8 @@ function App() {
 
   const currentFont = FONTS.find(f => f.id === activeEvent.fontId) || FONTS[0];
   const daysLeft = calcDaysLeft(activeEvent.targetDate);
-  const isJourJ = daysLeft === 0 && !!activeEvent.theme;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isJourJ = daysLeft === 0 && !!activeEvent.theme && activeEvent.targetDate === todayStr;
 
   const { handleShare, isSharing, shareError } = useShare(shareCardRef, activeEvent, daysLeft, isJourJ);
 
@@ -76,7 +77,7 @@ function App() {
       <div className="min-h-screen bg-gradient-to-br from-[#1a2a6c] via-[#b21f1f] to-[#fdbb2d] flex items-center justify-center p-6 font-sans">
         <div className="flex flex-col items-center gap-4">
           <div
-            className="relative w-full max-w-sm h-[520px] overflow-hidden rounded-[3rem] border border-white/20 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] text-white transition-all duration-700"
+            className="relative w-[400px] h-[647px] overflow-hidden rounded-[3rem] border border-white/20 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] text-white transition-all duration-700"
             style={{
               backgroundImage: activeEvent.bgImage ? `url(${activeEvent.bgImage})` : undefined,
               backgroundSize: 'cover', backgroundPosition: 'center',
@@ -109,7 +110,7 @@ function App() {
 
             {/* Pagination dots */}
             {events.length > 1 && !isSettingsOpen && !isFirstLaunch && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 flex gap-2">
                 {events.map((_, i) => (
                   <button key={i} onClick={() => switchTo(i)}
                     className={`rounded-full transition-all duration-300 ${i === activeIndex ? 'w-4 h-2 bg-white' : 'w-2 h-2 bg-white/40'}`}
