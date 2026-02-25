@@ -11,8 +11,7 @@ export default function WidgetSettings({
   onUpdateEvent, onSave, onClose, onDelete,
 }) {
   return (
-    <div className="relative z-10 p-8 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300"
-      style={{ height: '520px', overflowY: 'auto', overscrollBehavior: 'contain' }}>
+    <div className="relative z-10 p-8 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300 h-full overflow-y-auto overscroll-contain">
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-bold tracking-tight">Réglages</h2>
         <div className="flex items-center gap-2">
