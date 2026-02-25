@@ -2,6 +2,12 @@ import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGear, faBullseye, faWandMagicSparkles, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 
+const STEPS = [
+  { icon: faBullseye,          text: 'Choisis un thème et une date cible' },
+  { icon: faWandMagicSparkles, text: 'Une citation et une image sont générées pour toi' },
+  { icon: faPaperPlane,        text: 'Partage le moment avec tes proches' },
+];
+
 export default function WelcomeScreen({ onStart, visible }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-10 text-center transition-opacity duration-700"
@@ -17,11 +23,7 @@ export default function WelcomeScreen({ onStart, visible }) {
         </div>
         <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-left space-y-4">
           <p className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Comment ça marche</p>
-          {[
-            { icon: faBullseye, text: 'Choisis un thème et une date cible' },
-            { icon: faWandMagicSparkles, text: 'Une citation et une image sont générées pour toi' },
-            { icon: faPaperPlane, text: 'Partage le moment avec tes proches' },
-          ].map(({ icon, text }) => (
+          {STEPS.map(({ icon, text }) => (
             <div key={text} className="flex items-center gap-4">
               <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                 <FontAwesomeIcon icon={icon} className="text-white/70 text-sm" />
