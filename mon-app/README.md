@@ -1,4 +1,4 @@
-# MonWidget
+# TheCoachApp
 
 Compte à rebours personnel avec citations IA et images inspirantes. Crée des widgets pour tes événements importants, partage-les en image et retrouve-les à chaque visite.
 
