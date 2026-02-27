@@ -1,14 +1,34 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, StyleSheet,
+  ScrollView, ActivityIndicator, StyleSheet, Platform,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { FONTS } from '../../constants/fonts';
 
-const getTomorrowStr = () => {
+const getTomorrowDate = () => {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const dateToStr = (date) => date.toISOString().split('T')[0];
+
+const strToDate = (str) => {
+  if (!str) return getTomorrowDate();
+  const [y, m, d] = str.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return isNaN(date.getTime()) ? getTomorrowDate() : date;
+};
+
+const formatDateFR = (str) => {
+  if (!str) return '';
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
 };
 
 export default function WidgetSettings({
@@ -17,19 +37,14 @@ export default function WidgetSettings({
   isLoadingQuote, isLoadingImage,
   onUpdateEvent, onSave, onClose, onDelete,
 }) {
-  const [dateError, setDateError] = useState('');
-  const minDate = getTomorrowStr();
-
-  const handleSave = () => {
-    if (!activeEvent.targetDate || activeEvent.targetDate <= new Date().toISOString().split('T')[0]) {
-      setDateError('La date doit être dans le futur (à partir de demain).');
-      return;
-    }
-    setDateError('');
-    onSave();
-  };
-
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const isLoading = isLoadingQuote || isLoadingImage;
+  const selectedDate = strToDate(activeEvent.targetDate);
+
+  const handleDateChange = (event, date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (date) onUpdateEvent({ targetDate: dateToStr(date) });
+  };
 
   return (
     <View style={styles.container}>
@@ -40,125 +55,184 @@ export default function WidgetSettings({
         <View style={styles.headerActions}>
           {eventsCount > 1 && (
             !confirmDelete ? (
-              <TouchableOpacity style={styles.trashBtn} onPress={() => setConfirmDelete(true)} activeOpacity={0.7}>
-                <Text style={styles.trashIcon}>🗑</Text>
+              <TouchableOpacity
+                style={styles.trashBtn}
+                onPress={() => setConfirmDelete(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="trash-2" size={14} color="rgba(252,165,165,0.9)" />
               </TouchableOpacity>
             ) : (
               <View style={styles.confirmRow}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setConfirmDelete(false)}>
-                  <Text style={styles.cancelBtnText}>Annuler</Text>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setConfirmDelete(false)}
+                >
+                  <Text style={[styles.cancelBtnText, { fontFamily: 'Inter_700Bold' }]}>
+                    Annuler
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-                  <Text style={styles.deleteBtnText}>Supprimer</Text>
+                  <Text style={[styles.deleteBtnText, { fontFamily: 'Inter_700Bold' }]}>
+                    Supprimer
+                  </Text>
                 </TouchableOpacity>
               </View>
             )
           )}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
-            <Text style={styles.closeIcon}>✕</Text>
+            <Feather name="x" size={15} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* Formulaire scrollable — jusqu'au bouton Enregistrer */}
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.form}
       >
-        <View style={styles.form}>
-
-          {/* Nom de l'événement */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Nom de l'événement :</Text>
-            <TextInput
-              style={styles.input}
-              value={activeEvent.eventName}
-              onChangeText={(v) => onUpdateEvent({ eventName: v })}
-              placeholder="ex: Mon mariage, Mon marathon..."
-              placeholderTextColor="rgba(255,255,255,0.3)"
-            />
-          </View>
-
-          {/* Thème IA */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Thème (pour l'IA) :</Text>
-            <TextInput
-              style={styles.input}
-              value={activeEvent.theme}
-              onChangeText={(v) => onUpdateEvent({ theme: v })}
-              placeholder="ex: mariage élégant, marathon sportif..."
-              placeholderTextColor="rgba(255,255,255,0.3)"
-            />
-            <Text style={styles.hint}>Utilisé pour générer l'image et la citation.</Text>
-          </View>
-
-          {/* Date — TextInput YYYY-MM-DD (remplacer par DateTimePicker si besoin) */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Événement le :</Text>
-            <TextInput
-              style={[styles.input, dateError ? styles.inputError : null]}
-              value={activeEvent.targetDate}
-              onChangeText={(v) => { setDateError(''); onUpdateEvent({ targetDate: v }); }}
-              placeholder="AAAA-MM-JJ"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              keyboardType="numeric"
-              maxLength={10}
-            />
-            {dateError ? (
-              <Text style={styles.errorText}>{dateError}</Text>
-            ) : (
-              <Text style={styles.hint}>Format : AAAA-MM-JJ (ex: {minDate})</Text>
-            )}
-          </View>
-
-          {/* Police */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Police :</Text>
-            <View style={styles.fontList}>
-              {FONTS.map((font) => (
-                <TouchableOpacity
-                  key={font.id}
-                  style={[styles.fontBtn, activeEvent.fontId === font.id && styles.fontBtnActive]}
-                  onPress={() => onUpdateEvent({ fontId: font.id })}
-                  activeOpacity={0.7}
-                >
-                  <View>
-                    <Text style={styles.fontLabel}>{font.label}</Text>
-                    <Text style={[styles.fontName, { fontFamily: font.numberStyle.fontFamily }]}>
-                      {font.name}
-                    </Text>
-                  </View>
-                  <Text style={[styles.fontPreview, {
-                    fontFamily: font.numberStyle.fontFamily,
-                    fontWeight: font.numberStyle.fontWeight,
-                  }]}>
-                    42
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
+        {/* Nom de l'événement */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>
+            Nom de l'événement
+          </Text>
+          <TextInput
+            style={[styles.input, { fontFamily: 'Inter_300Light' }]}
+            value={activeEvent.eventName}
+            onChangeText={(v) => onUpdateEvent({ eventName: v })}
+            placeholder="ex: Mon mariage, Mon marathon..."
+            placeholderTextColor="rgba(255,255,255,0.3)"
+          />
         </View>
+
+        {/* Thème IA */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>
+            Thème (pour l'IA)
+          </Text>
+          <TextInput
+            style={[styles.input, { fontFamily: 'Inter_300Light' }]}
+            value={activeEvent.theme}
+            onChangeText={(v) => onUpdateEvent({ theme: v })}
+            placeholder="ex: mariage élégant, marathon sportif..."
+            placeholderTextColor="rgba(255,255,255,0.3)"
+          />
+          <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
+            Utilisé pour générer l'image et la citation.
+          </Text>
+        </View>
+
+        {/* Date — Wheel Picker natif iOS */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>
+            Date de l'événement
+          </Text>
+
+          {/* iOS : wheel picker inline */}
+          {Platform.OS === 'ios' && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="spinner"
+              minimumDate={getTomorrowDate()}
+              onChange={handleDateChange}
+              locale="fr-FR"
+              style={styles.datePicker}
+              textColor="#fff"
+            />
+          )}
+
+          {/* Android : bouton qui ouvre le picker natif */}
+          {Platform.OS === 'android' && (
+            <>
+              <TouchableOpacity
+                style={styles.dateBtn}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <Feather name="calendar" size={15} color="rgba(255,255,255,0.7)" />
+                <Text style={[styles.dateBtnText, { fontFamily: 'Inter_300Light' }]}>
+                  {activeEvent.targetDate
+                    ? formatDateFR(activeEvent.targetDate)
+                    : 'Choisir une date'}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={selectedDate}
+                  mode="date"
+                  display="default"
+                  minimumDate={getTomorrowDate()}
+                  onChange={handleDateChange}
+                />
+              )}
+            </>
+          )}
+
+          {/* Date sélectionnée — confirmation visuelle sur iOS */}
+          {Platform.OS === 'ios' && activeEvent.targetDate && (
+            <Text style={[styles.dateConfirm, { fontFamily: 'Inter_300Light' }]}>
+              📅 {formatDateFR(activeEvent.targetDate)}
+            </Text>
+          )}
+        </View>
+
+        {/* Police */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>Police</Text>
+          <View style={styles.fontList}>
+            {FONTS.map((font) => (
+              <TouchableOpacity
+                key={font.id}
+                style={[
+                  styles.fontBtn,
+                  activeEvent.fontId === font.id && styles.fontBtnActive,
+                ]}
+                onPress={() => onUpdateEvent({ fontId: font.id })}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.fontLabel, { fontFamily: 'Inter_700Bold' }]}>
+                    {font.label}
+                  </Text>
+                  <Text style={[styles.fontName, { fontFamily: font.numberStyle.fontFamily }]}>
+                    {font.name}
+                  </Text>
+                </View>
+                <Text style={[styles.fontPreview, {
+                  fontFamily: font.numberStyle.fontFamily,
+                }]}>
+                  42
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Bouton Enregistrer — dans le scroll, toujours visible après les polices */}
+        <TouchableOpacity
+          style={[styles.saveBtn, isLoading && { opacity: 0.5 }]}
+          onPress={onSave}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          {isLoading ? (
+            <>
+              <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
+              <Text style={[styles.saveBtnText, { fontFamily: 'Inter_700Bold' }]}>
+                Chargement...
+              </Text>
+            </>
+          ) : (
+            <Text style={[styles.saveBtnText, { fontFamily: 'Inter_700Bold' }]}>
+              Enregistrer
+            </Text>
+          )}
+        </TouchableOpacity>
+
       </ScrollView>
-
-      {/* Bouton Enregistrer */}
-      <TouchableOpacity
-        style={[styles.saveBtn, isLoading && { opacity: 0.5 }]}
-        onPress={handleSave}
-        disabled={isLoading}
-        activeOpacity={0.85}
-      >
-        {isLoading ? (
-          <>
-            <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
-            <Text style={styles.saveBtnText}>Chargement...</Text>
-          </>
-        ) : (
-          <Text style={styles.saveBtnText}>Enregistrer</Text>
-        )}
-      </TouchableOpacity>
-
     </View>
   );
 }
@@ -169,16 +243,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 20,
-    gap: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: 'Inter_900Black',
     color: '#fff',
     letterSpacing: -0.5,
   },
@@ -195,9 +269,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trashIcon: {
-    fontSize: 14,
-  },
   confirmRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -205,7 +276,7 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 20,
   },
@@ -215,14 +286,13 @@ const styles = StyleSheet.create({
   },
   deleteBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
     backgroundColor: 'rgba(239,68,68,0.4)',
     borderRadius: 20,
   },
   deleteBtnText: {
     fontSize: 11,
     color: '#fca5a5',
-    fontWeight: '700',
   },
   closeBtn: {
     width: 32,
@@ -232,21 +302,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeIcon: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: '700',
-  },
   form: {
     gap: 24,
     paddingBottom: 8,
   },
   field: {
-    gap: 8,
+    gap: 10,
   },
   label: {
     fontSize: 10,
-    fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 3,
     color: 'rgba(255,255,255,0.4)',
@@ -260,17 +324,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
   },
-  inputError: {
-    borderColor: 'rgba(239,68,68,0.6)',
-  },
   hint: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.3)',
   },
-  errorText: {
-    fontSize: 10,
-    color: '#fca5a5',
+  // Date picker iOS
+  datePicker: {
+    height: 160,
+    marginHorizontal: -8,
   },
+  dateConfirm: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+  },
+  // Date button Android
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  dateBtnText: {
+    color: '#fff',
+    fontSize: 15,
+  },
+  // Polices
   fontList: {
     gap: 8,
   },
@@ -286,15 +369,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   fontBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.45)',
   },
   fontLabel: {
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 3,
     color: 'rgba(255,255,255,0.4)',
-    fontWeight: '700',
   },
   fontName: {
     fontSize: 14,
@@ -305,24 +387,21 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: '#fff',
   },
+  // Bouton Enregistrer dans le scroll
   saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    marginTop: 8,
   },
   saveBtnText: {
     color: '#fff',
-    fontWeight: '700',
     fontSize: 15,
   },
 });

@@ -6,6 +6,7 @@ import { captureRef } from 'react-native-view-shot';
 export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
   const [isSharing, setIsSharing] = useState(false);
   const [shareError, setShareError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Auto-clear shareError après 4s
   useEffect(() => {
@@ -56,7 +57,10 @@ export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
         const { status } = await MediaLibrary.requestPermissionsAsync();
         if (status === 'granted') {
           await MediaLibrary.saveToLibraryAsync(uri);
-          // On pourrait afficher un toast "Sauvegardé dans Photos" ici
+          // Ajouter un état imageSaved temporaire
+          //setShareError(null);
+          setSaveSuccess(true); // ← nouveau state
+          setTimeout(() => setSaveSuccess(false), 3000);
         } else {
           setShareError("Permission refusée pour accéder à la galerie.");
         }
@@ -71,5 +75,5 @@ export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
     }
   }, [shareCardRef]);
 
-  return { handleShare, isSharing, shareError };
+  return { handleShare, isSharing, shareError, saveSuccess };
 }

@@ -1,5 +1,7 @@
 export const generateId = () => `evt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
+export const seededRand = (i, offset = 0) => Math.abs(Math.sin(i * 127.1 + offset * 311.7));
+
 export const DEFAULT_EVENT = () => ({
   id: generateId(),
   eventName: '',
@@ -12,7 +14,10 @@ export const DEFAULT_EVENT = () => ({
 });
 
 export function calcDaysLeft(targetDate) {
-  const [y, m, d] = targetDate.split('-').map(Number);
+  if (!targetDate || typeof targetDate !== 'string') return 0;
+  const parts = targetDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return 0;
+  const [y, m, d] = parts;
   const target = new Date(y, m - 1, d);
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -1,13 +1,80 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet,
+  ActivityIndicator, StyleSheet, Animated,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
+// --- TOOLTIP GLASSMORPHISM ---
+function Tooltip({ label, children }) {
+  const [visible, setVisible] = useState(false);
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  const show = () => {
+    setVisible(true);
+    Animated.timing(opacity, {
+      toValue: 1, duration: 150, useNativeDriver: true,
+    }).start();
+  };
+
+  const hide = () => {
+    Animated.timing(opacity, {
+      toValue: 0, duration: 150, useNativeDriver: true,
+    }).start(() => setVisible(false));
+  };
+
+  return (
+    <View style={tooltipStyles.wrapper}>
+      {visible && (
+        <Animated.View style={[tooltipStyles.tooltip, { opacity }]}>
+          <Text style={tooltipStyles.label} numberOfLines={1}>{label}</Text>
+        </Animated.View>
+      )}
+      {React.cloneElement(children, {
+        onLongPress: show,
+        onPressOut: hide,
+        delayLongPress: 300,
+      })}
+    </View>
+  );
+}
+
+const tooltipStyles = StyleSheet.create({
+  wrapper: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  tooltip: {
+    position: 'absolute',
+    top: '100%',
+    marginTop: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    zIndex: 100,
+    alignSelf: 'center',   // centré sous le bouton
+    width: 100,
+  },
+  label: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.85)',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.5,
+    numberOfLines: 1,      // force une seule ligne
+    flexShrink: 0,  // ne se compresse pas
+    width: 'fit-content', // largeur selon le contenu (non standard, mais fonctionne dans RN)
+    alignContent: 'center',          
+  },
+});
+
+// --- WIDGET DISPLAY ---
 export default function WidgetDisplay({
   activeEvent, daysLeft, currentFont,
   isLoadingQuote, quoteError, isLoadingImage,
-  isSharing, shareError,
+  isSharing, shareError, saveSuccess,
   onAddEvent, onOpenSettings, onRefreshImage, onRefreshQuote, onShare,
 }) {
   return (
@@ -15,21 +82,33 @@ export default function WidgetDisplay({
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={onAddEvent} activeOpacity={0.7}>
-          <Text style={styles.iconText}>＋</Text>
-        </TouchableOpacity>
+        <Tooltip label="Ajouter un événement">
+          <TouchableOpacity style={styles.iconBtn} onPress={onAddEvent} activeOpacity={0.7}>
+            <Feather name="plus" size={18} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
+        </Tooltip>
+
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={[styles.iconBtn, (isLoadingImage || !activeEvent.theme) && styles.iconBtnDisabled]}
-            onPress={onRefreshImage}
-            disabled={isLoadingImage || !activeEvent.theme}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.iconText, isLoadingImage && { opacity: 0.4 }]}>🖼</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={onOpenSettings} activeOpacity={0.7}>
-            <Text style={styles.iconText}>⚙</Text>
-          </TouchableOpacity>
+          <Tooltip label="Changer l'image">
+            <TouchableOpacity
+              style={[styles.iconBtn, (isLoadingImage || !activeEvent.theme) && styles.iconBtnDisabled]}
+              onPress={onRefreshImage}
+              disabled={isLoadingImage || !activeEvent.theme}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="image"
+                size={18}
+                color={isLoadingImage ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)'}
+              />
+            </TouchableOpacity>
+          </Tooltip>
+
+          <Tooltip label="Paramètres">
+            <TouchableOpacity style={styles.iconBtn} onPress={onOpenSettings} activeOpacity={0.7}>
+              <Feather name="settings" size={18} color="rgba(255,255,255,0.8)" />
+            </TouchableOpacity>
+          </Tooltip>
         </View>
       </View>
 
@@ -37,19 +116,19 @@ export default function WidgetDisplay({
       <View style={styles.counterBlock}>
         <Text style={[styles.daysNumber, {
           fontFamily: currentFont.numberStyle.fontFamily,
-          fontWeight: currentFont.numberStyle.fontWeight,
         }]}>
           {daysLeft}
         </Text>
         <Text style={[styles.daysLabel, {
           fontFamily: currentFont.labelStyle.fontFamily,
-          fontWeight: currentFont.labelStyle.fontWeight,
           letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
         }]}>
           Jours restants
         </Text>
         {(activeEvent.eventName || activeEvent.theme) && (
-          <Text style={styles.eventName}>— {activeEvent.eventName || activeEvent.theme}</Text>
+          <Text style={[styles.eventName, { fontFamily: 'Inter_300Light' }]}>
+            — {activeEvent.eventName || activeEvent.theme}
+          </Text>
         )}
       </View>
 
@@ -59,21 +138,24 @@ export default function WidgetDisplay({
           {isLoadingQuote ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />
-              <Text style={styles.loadingText}>Génération en cours...</Text>
+              <Text style={[styles.loadingText, { fontFamily: 'Inter_300Light' }]}>
+                Génération en cours...
+              </Text>
             </View>
           ) : quoteError ? (
-            <Text style={styles.errorText}>{quoteError}</Text>
+            <Text style={[styles.errorText, { fontFamily: 'Inter_300Light' }]}>{quoteError}</Text>
           ) : (
             <>
               <Text style={[styles.quoteText, {
                 fontFamily: currentFont.quoteStyle.fontFamily,
                 fontStyle: currentFont.quoteStyle.fontStyle || 'italic',
-                fontWeight: currentFont.quoteStyle.fontWeight,
               }]}>
                 "{activeEvent.quote?.text}"
               </Text>
               {activeEvent.quote?.author && (
-                <Text style={styles.quoteAuthor}>— {activeEvent.quote.author}</Text>
+                <Text style={[styles.quoteAuthor, { fontFamily: 'Inter_700Bold' }]}>
+                  — {activeEvent.quote.author}
+                </Text>
               )}
             </>
           )}
@@ -85,8 +167,14 @@ export default function WidgetDisplay({
           disabled={isLoadingQuote}
           activeOpacity={0.6}
         >
-          <Text style={[styles.refreshQuoteText, isLoadingQuote && { opacity: 0.3 }]}>
-            ↻  Nouvelle citation
+          <Feather
+            name="refresh-cw"
+            size={10}
+            color="rgba(255,255,255,0.45)"
+            style={isLoadingQuote ? { opacity: 0.3 } : {}}
+          />
+          <Text style={[styles.refreshQuoteText, isLoadingQuote && { opacity: 0.3 }, { fontFamily: 'Inter_700Bold' }]}>
+            Nouvelle citation
           </Text>
         </TouchableOpacity>
       </View>
@@ -102,13 +190,27 @@ export default function WidgetDisplay({
           {isSharing ? (
             <>
               <ActivityIndicator size="small" color="#374151" />
-              <Text style={styles.shareBtnText}>Capture en cours...</Text>
+              <Text style={[styles.shareBtnText, { fontFamily: 'Inter_700Bold' }]}>
+                Capture en cours...
+              </Text>
             </>
           ) : (
-            <Text style={styles.shareBtnText}>⬆  Partager le moment</Text>
+            <>
+              <Feather name="share" size={16} color="#111" />
+              <Text style={[styles.shareBtnText, { fontFamily: 'Inter_700Bold' }]}>
+                Partager le moment
+              </Text>
+            </>
           )}
         </TouchableOpacity>
-        {shareError && <Text style={styles.shareError}>{shareError}</Text>}
+        {shareError && (
+          <Text style={[styles.shareError, { fontFamily: 'Inter_300Light' }]}>{shareError}</Text>
+        )}
+        {saveSuccess && (
+          <Text style={[styles.saveSuccess, { fontFamily: 'Inter_700Bold' }]}>
+            ✓ Image sauvegardée dans Photos
+          </Text>
+        )}
       </View>
 
     </View>
@@ -143,10 +245,6 @@ const styles = StyleSheet.create({
   },
   iconBtnDisabled: {
     opacity: 0.3,
-  },
-  iconText: {
-    fontSize: 17,
-    color: 'rgba(255,255,255,0.8)',
   },
   counterBlock: {
     alignItems: 'center',
@@ -205,13 +303,15 @@ const styles = StyleSheet.create({
   quoteAuthor: {
     marginTop: 12,
     fontSize: 10,
-    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 2,
     color: 'rgba(255,255,255,0.4)',
   },
   refreshQuoteBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingTop: 4,
   },
   refreshQuoteText: {
@@ -219,7 +319,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 3,
     color: 'rgba(255,255,255,0.45)',
-    fontWeight: '700',
   },
   shareBlock: {
     gap: 8,
@@ -240,7 +339,6 @@ const styles = StyleSheet.create({
   },
   shareBtnText: {
     color: '#111',
-    fontWeight: '700',
     fontSize: 15,
   },
   shareError: {
@@ -248,5 +346,10 @@ const styles = StyleSheet.create({
     color: '#fca5a5',
     textAlign: 'center',
     opacity: 0.8,
+  },
+  saveSuccess: {
+    fontSize: 10,
+    color: '#86efac',
+    textAlign: 'center',
   },
 });

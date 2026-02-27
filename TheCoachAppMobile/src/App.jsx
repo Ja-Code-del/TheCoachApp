@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Animated, ImageBackground, TouchableOpacity, Text,
   ActivityIndicator, Linking, StyleSheet, Dimensions,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,7 +13,9 @@ import {
 } from '@expo-google-fonts/inter';
 import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
 import {
-  PlayfairDisplay_400Regular, PlayfairDisplay_400Regular_Italic, PlayfairDisplay_900Black,
+  PlayfairDisplay_400Regular,
+  PlayfairDisplay_400Regular_Italic,
+  PlayfairDisplay_900Black,
 } from '@expo-google-fonts/playfair-display';
 import {
   Lora_400Regular, Lora_400Regular_Italic, Lora_700Bold,
@@ -41,17 +44,19 @@ export default function App() {
   const shareCardRef = useRef(null);
   const contentOpacity = useRef(new Animated.Value(0)).current;
 
-  // Chargement des polices
+  // --- Chargement des polices ---
   const [fontsLoaded] = useFonts({
     Inter_300Light, Inter_700Bold, Inter_900Black,
     BebasNeue_400Regular,
-    PlayfairDisplay_400Regular, PlayfairDisplay_400Regular_Italic, PlayfairDisplay_900Black,
+    PlayfairDisplay_400Regular,
+    PlayfairDisplay_400Regular_Italic,
+    PlayfairDisplay_900Black,
     Lora_400Regular, Lora_400Regular_Italic, Lora_700Bold,
     SpaceGrotesk_300Light, SpaceGrotesk_500Medium, SpaceGrotesk_700Bold,
   });
 
-  // Premier lancement (remplace localStorage)
-  const [isFirstLaunch, setIsFirstLaunch] = useState(null); // null = vérification en cours
+  // --- Premier lancement ---
+  const [isFirstLaunch, setIsFirstLaunch] = useState(null);
   const [welcomeVisible, setWelcomeVisible] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -64,26 +69,45 @@ export default function App() {
     });
   }, []);
 
+  // --- Hooks ---
   const {
     events, setEvents, activeIndex, setActiveIndex, activeEvent, isReady,
-    updateActiveEvent, updateEventById, deleteActiveEvent,
+    updateActiveEvent, updateEventById, appendEvent, deleteActiveEvent,
   } = useEvents();
 
   const { switchTo, fadeVisible, handleTouchStart, handleTouchEnd } = useCarousel(
     events.length, activeIndex, setActiveIndex
   );
 
-  const { generateQuote, loadImage, isLoadingQuote, isLoadingImage, quoteError, resetQuoteError } =
-    useMediaGeneration(activeEvent, updateEventById);
+  const {
+    generateQuote, loadImage,
+    isLoadingQuote, isLoadingImage,
+    quoteError, resetQuoteError,
+  } = useMediaGeneration(activeEvent, updateEventById);
 
-  const currentFont = FONTS.find(f => f.id === activeEvent.fontId) || FONTS[0];
-  const daysLeft = calcDaysLeft(activeEvent.targetDate);
-  const todayStr = new Date().toISOString().split('T')[0];
+  // --- Valeurs dérivées mémoïsées ---
+  const currentFont = useMemo(
+    () => FONTS.find(f => f.id === activeEvent.fontId) || FONTS[0],
+    [activeEvent.fontId]
+  );
+
+  const daysLeft = useMemo(
+    () => calcDaysLeft(activeEvent.targetDate),
+    [activeEvent.targetDate]
+  );
+
+  const todayStr = useMemo(
+    () => new Date().toISOString().split('T')[0],
+    []
+  );
+
   const isJourJ = daysLeft === 0 && !!activeEvent.theme && activeEvent.targetDate === todayStr;
 
-  const { handleShare, isSharing, shareError } = useShare(shareCardRef, activeEvent, daysLeft, isJourJ);
+  const { handleShare, isSharing, shareError, saveSuccess } = useShare(
+    shareCardRef, activeEvent, daysLeft, isJourJ
+  );
 
-  // Opacité du contenu principal — equivalent à transition-opacity duration-300
+  // --- Fade du carousel ---
   useEffect(() => {
     const shouldShow = isFirstLaunch === false && !isJourJ;
     Animated.timing(contentOpacity, {
@@ -93,14 +117,19 @@ export default function App() {
     }).start();
   }, [fadeVisible, isFirstLaunch, isJourJ]);
 
+  // --- Resets ---
   useEffect(() => { resetQuoteError(); }, [activeIndex, resetQuoteError]);
   useEffect(() => { if (!isSettingsOpen) setConfirmDelete(false); }, [isSettingsOpen]);
 
+  // --- Ajouter un événement (fix race condition) ---
   const addEvent = () => {
     const newEvent = DEFAULT_EVENT();
     setEvents(prev => {
       const newIndex = prev.length;
-      setTimeout(() => { switchTo(newIndex); setIsSettingsOpen(true); }, 50);
+      setTimeout(() => {
+        switchTo(newIndex);
+        setIsSettingsOpen(true);
+      }, 50);
       return [...prev, newEvent];
     });
   };
@@ -124,160 +153,168 @@ export default function App() {
     setConfirmDelete(false);
   };
 
-  // Attendre fonts + AsyncStorage + events avant de rendre
+  // --- Splash screen ---
   if (!fontsLoaded || isFirstLaunch === null || !isReady) {
     return (
-      <LinearGradient colors={['#1a2a6c', '#b21f1f', '#fdbb2d']} style={styles.splash}>
-        <StatusBar style="light" />
-        <ActivityIndicator size="large" color="rgba(255,255,255,0.6)" />
-      </LinearGradient>
+      <SafeAreaProvider>
+        <LinearGradient colors={['#1a2a6c', '#b21f1f', '#fdbb2d']} style={styles.splash}>
+          <StatusBar style="light" />
+          <ActivityIndicator size="large" color="rgba(255,255,255,0.6)" />
+        </LinearGradient>
+      </SafeAreaProvider>
     );
   }
 
   const contentPointerEvents = (isFirstLaunch !== false || isJourJ) ? 'none' : 'box-none';
 
   return (
-    <LinearGradient colors={['#1a2a6c', '#b21f1f', '#fdbb2d']} style={styles.root}>
-      <StatusBar style="light" />
+    <SafeAreaProvider>
+      <LinearGradient colors={['#1a2a6c', '#b21f1f', '#fdbb2d']} style={styles.root}>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar style="light" />
 
-      {/* ShareCard hors-écran pour capture (react-native-view-shot) */}
-      <ShareCard
-        cardRef={shareCardRef}
-        daysLeft={daysLeft}
-        theme={activeEvent.eventName || activeEvent.theme}
-        quote={activeEvent.quote}
-        bgImage={activeEvent.bgImage}
-        targetDate={activeEvent.targetDate}
-        font={currentFont}
-        isJourJ={isJourJ}
-      />
+          {/* ShareCard hors-écran pour captureRef */}
+          <ShareCard
+            cardRef={shareCardRef}
+            daysLeft={daysLeft}
+            theme={activeEvent.eventName || activeEvent.theme}
+            quote={activeEvent.quote}
+            bgImage={activeEvent.bgImage}
+            targetDate={activeEvent.targetDate}
+            font={currentFont}
+            isJourJ={isJourJ}
+          />
 
-      <View style={styles.outer}>
-        <View
-          style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Fond : image ou couleur */}
-          {activeEvent.bgImage ? (
-            <ImageBackground
-              source={{ uri: activeEvent.bgImage }}
-              style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
-              blurRadius={2}
+          <View style={styles.outer}>
+            <View
+              style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
-              <View style={[StyleSheet.absoluteFillObject, styles.overlayImage]} />
-            </ImageBackground>
-          ) : (
-            <View style={[StyleSheet.absoluteFillObject, styles.overlayDefault]} />
-          )}
-
-          {/* Bulle décorative haut-droite */}
-          <View style={styles.decorCircle} pointerEvents="none" />
-
-          {/* Indicateur chargement image */}
-          {isLoadingImage && !isFirstLaunch && !isJourJ && (
-            <View style={styles.loadingImageBadge} pointerEvents="none">
-              <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
-              <Text style={styles.loadingImageText}>Nouvelle image…</Text>
-            </View>
-          )}
-
-          {/* Crédit Unsplash */}
-          {activeEvent.photographer && !isFirstLaunch && !isJourJ && (
-            <TouchableOpacity
-              style={styles.credit}
-              onPress={() => Linking.openURL(
-                `${activeEvent.photographer.url}?utm_source=countdown_app&utm_medium=referral`
+              {/* Fond : image ou couleur */}
+              {activeEvent.bgImage ? (
+                <ImageBackground
+                  source={{ uri: activeEvent.bgImage }}
+                  style={StyleSheet.absoluteFillObject}
+                  resizeMode="cover"
+                  blurRadius={2}
+                >
+                  <View style={[StyleSheet.absoluteFillObject, styles.overlayImage]} />
+                </ImageBackground>
+              ) : (
+                <View style={[StyleSheet.absoluteFillObject, styles.overlayDefault]} />
               )}
-            >
-              <Text style={styles.creditText}>
-                📷 {activeEvent.photographer.name} / Unsplash
-              </Text>
-            </TouchableOpacity>
-          )}
 
-          {/* Points de pagination (swipe carousel) */}
-          {events.length > 1 && !isSettingsOpen && !isFirstLaunch && (
-            <View style={styles.dots}>
-              {events.map((_, i) => (
+              {/* Bulle décorative */}
+              <View style={styles.decorCircle} pointerEvents="none" />
+
+              {/* Indicateur chargement image */}
+              {isLoadingImage && !isFirstLaunch && !isJourJ && (
+                <View style={styles.loadingImageBadge} pointerEvents="none">
+                  <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.loadingImageText}>Nouvelle image…</Text>
+                </View>
+              )}
+
+              {/* Crédit Unsplash */}
+              {activeEvent.photographer && !isFirstLaunch && !isJourJ && (
                 <TouchableOpacity
-                  key={i}
-                  onPress={() => switchTo(i)}
-                  style={[styles.dot, i === activeIndex && styles.dotActive]}
+                  style={styles.credit}
+                  onPress={() => Linking.openURL(
+                    `${activeEvent.photographer.url}?utm_source=countdown_app&utm_medium=referral`
+                  )}
+                >
+                  <Text style={styles.creditText}>
+                    📷 {activeEvent.photographer.name} / Unsplash
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Dots pagination */}
+              {events.length > 1 && !isSettingsOpen && !isFirstLaunch && (
+                <View style={styles.dots}>
+                  {events.map((_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => switchTo(i)}
+                      style={[styles.dot, i === activeIndex && styles.dotActive]}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* Écran de bienvenue */}
+              {isFirstLaunch && (
+                <WelcomeScreen onStart={handleStart} visible={welcomeVisible} />
+              )}
+
+              {/* Jour J */}
+              {isJourJ && !isFirstLaunch && (
+                <JourJScreen
+                  eventName={activeEvent.eventName}
+                  theme={activeEvent.theme}
+                  onShare={handleShare}
+                  isSharing={isSharing}
                 />
-              ))}
+              )}
+
+              {/* Contenu principal avec fondu */}
+              <Animated.View
+                style={[StyleSheet.absoluteFillObject, { opacity: contentOpacity }]}
+                pointerEvents={contentPointerEvents}
+              >
+                {!isSettingsOpen ? (
+                  <WidgetDisplay
+                    activeEvent={activeEvent}
+                    daysLeft={daysLeft}
+                    currentFont={currentFont}
+                    isLoadingQuote={isLoadingQuote}
+                    quoteError={quoteError}
+                    isLoadingImage={isLoadingImage}
+                    isSharing={isSharing}
+                    shareError={shareError}
+                    saveSuccess={saveSuccess}
+                    onAddEvent={addEvent}
+                    onOpenSettings={() => setIsSettingsOpen(true)}
+                    onRefreshImage={() => loadImage()}
+                    onRefreshQuote={() => generateQuote()}
+                    onShare={handleShare}
+                  />
+                ) : (
+                  <WidgetSettings
+                    activeEvent={activeEvent}
+                    eventsCount={events.length}
+                    confirmDelete={confirmDelete}
+                    setConfirmDelete={setConfirmDelete}
+                    isLoadingQuote={isLoadingQuote}
+                    isLoadingImage={isLoadingImage}
+                    onUpdateEvent={updateActiveEvent}
+                    onSave={handleSaveSettings}
+                    onClose={() => setIsSettingsOpen(false)}
+                    onDelete={handleDelete}
+                  />
+                )}
+              </Animated.View>
+
             </View>
-          )}
-
-          {/* Écran de bienvenue */}
-          {isFirstLaunch && (
-            <WelcomeScreen onStart={handleStart} visible={welcomeVisible} />
-          )}
-
-          {/* Jour J */}
-          {isJourJ && !isFirstLaunch && (
-            <JourJScreen
-              eventName={activeEvent.eventName}
-              theme={activeEvent.theme}
-              onShare={handleShare}
-              isSharing={isSharing}
-            />
-          )}
-
-          {/* Contenu principal avec fondu carousel */}
-          <Animated.View
-            style={[StyleSheet.absoluteFillObject, { opacity: contentOpacity }]}
-            pointerEvents={contentPointerEvents}
-          >
-            {!isSettingsOpen ? (
-              <WidgetDisplay
-                activeEvent={activeEvent}
-                daysLeft={daysLeft}
-                currentFont={currentFont}
-                isLoadingQuote={isLoadingQuote}
-                quoteError={quoteError}
-                isLoadingImage={isLoadingImage}
-                isSharing={isSharing}
-                shareError={shareError}
-                onAddEvent={addEvent}
-                onOpenSettings={() => setIsSettingsOpen(true)}
-                onRefreshImage={() => loadImage()}
-                onRefreshQuote={() => generateQuote()}
-                onShare={handleShare}
-              />
-            ) : (
-              <WidgetSettings
-                activeEvent={activeEvent}
-                eventsCount={events.length}
-                confirmDelete={confirmDelete}
-                setConfirmDelete={setConfirmDelete}
-                isLoadingQuote={isLoadingQuote}
-                isLoadingImage={isLoadingImage}
-                onUpdateEvent={updateActiveEvent}
-                onSave={handleSaveSettings}
-                onClose={() => setIsSettingsOpen(false)}
-                onDelete={handleDelete}
-              />
-            )}
-          </Animated.View>
-
-        </View>
-      </View>
-    </LinearGradient>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   splash: {
     flex: 1,
-    backgroundColor: '#1a2a6c',
     alignItems: 'center',
     justifyContent: 'center',
   },
   root: {
     flex: 1,
-    backgroundColor: '#1a2a6c',
+  },
+  safeArea: {
+    flex: 1,
   },
   outer: {
     flex: 1,
@@ -331,6 +368,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     textTransform: 'uppercase',
     letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
   },
   credit: {
     position: 'absolute',
@@ -341,6 +379,7 @@ const styles = StyleSheet.create({
   creditText: {
     fontSize: 9,
     color: 'rgba(255,255,255,0.4)',
+    fontFamily: 'Inter_300Light',
   },
   dots: {
     position: 'absolute',
