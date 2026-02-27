@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, StyleSheet, Platform,
+  ScrollView, ActivityIndicator, StyleSheet, Platform, useWindowDimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -37,6 +37,7 @@ export default function WidgetSettings({
   isLoadingQuote, isLoadingImage,
   onUpdateEvent, onSave, onClose, onDelete,
 }) {
+  const { height: screenHeight } = useWindowDimensions();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const isLoading = isLoadingQuote || isLoadingImage;
   const selectedDate = strToDate(activeEvent.targetDate);
@@ -88,7 +89,7 @@ export default function WidgetSettings({
 
       {/* Formulaire scrollable — jusqu'au bouton Enregistrer */}
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ maxHeight: screenHeight * 0.60 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.form}
@@ -239,7 +240,6 @@ export default function WidgetSettings({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 20,
