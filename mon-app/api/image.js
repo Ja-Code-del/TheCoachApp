@@ -20,6 +20,20 @@ export default async function handler(req, res) {
     );
 
     if (!response.ok) {
+      // Si aucune photo pour ce thème, on retente sans filtre
+      if (response.status === 404) {
+        const fallback = await fetch(
+          `https://api.unsplash.com/photos/random?orientation=portrait&client_id=${process.env.UNSPLASH_ACCESS_KEY}`
+        );
+        if (fallback.ok) {
+          const data = await fallback.json();
+          return res.status(200).json({
+            url: data.urls.regular,
+            photographer: data.user.name,
+            photographerUrl: data.user.links.html,
+          });
+        }
+      }
       let message = 'Unsplash error';
       try {
         const error = await response.json();
