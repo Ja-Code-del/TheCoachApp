@@ -31,6 +31,21 @@ const formatDateFR = (str) => {
   });
 };
 
+const COUNTER_STYLES = [
+  {
+    id: 'default',
+    label: 'Standard',
+    description: 'Chiffres lumineux sur fond transparent',
+    preview: '6j · 14h · 32min',
+  },
+  {
+    id: 'glass',
+    label: 'Verre',
+    description: 'Effet glassmorphism — inspiré Apple',
+    preview: '6j · 14h · 32min',
+  },
+];
+
 export default function WidgetSettings({
   activeEvent, eventsCount,
   confirmDelete, setConfirmDelete,
@@ -41,6 +56,7 @@ export default function WidgetSettings({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const isLoading = isLoadingQuote || isLoadingImage;
   const selectedDate = strToDate(activeEvent.targetDate);
+  const currentCounterStyle = activeEvent.counterStyle || 'default';
 
   const handleDateChange = (event, date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
@@ -87,7 +103,7 @@ export default function WidgetSettings({
         </View>
       </View>
 
-      {/* Formulaire scrollable — jusqu'au bouton Enregistrer */}
+      {/* Formulaire scrollable */}
       <ScrollView
         style={{ maxHeight: screenHeight * 0.60 }}
         showsVerticalScrollIndicator={false}
@@ -125,13 +141,12 @@ export default function WidgetSettings({
           </Text>
         </View>
 
-        {/* Date — Wheel Picker natif iOS */}
+        {/* Date */}
         <View style={styles.field}>
           <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>
             Date de l'événement
           </Text>
 
-          {/* iOS : wheel picker inline */}
           {Platform.OS === 'ios' && (
             <DateTimePicker
               value={selectedDate}
@@ -145,7 +160,6 @@ export default function WidgetSettings({
             />
           )}
 
-          {/* Android : bouton qui ouvre le picker natif */}
           {Platform.OS === 'android' && (
             <>
               <TouchableOpacity
@@ -172,7 +186,6 @@ export default function WidgetSettings({
             </>
           )}
 
-          {/* Date sélectionnée — confirmation visuelle sur iOS */}
           {Platform.OS === 'ios' && activeEvent.targetDate && (
             <Text style={[styles.dateConfirm, { fontFamily: 'Inter_300Light' }]}>
               📅 {formatDateFR(activeEvent.targetDate)}
@@ -202,9 +215,7 @@ export default function WidgetSettings({
                     {font.name}
                   </Text>
                 </View>
-                <Text style={[styles.fontPreview, {
-                  fontFamily: font.numberStyle.fontFamily,
-                }]}>
+                <Text style={[styles.fontPreview, { fontFamily: font.numberStyle.fontFamily }]}>
                   42
                 </Text>
               </TouchableOpacity>
@@ -212,7 +223,68 @@ export default function WidgetSettings({
           </View>
         </View>
 
-        {/* Bouton Enregistrer — dans le scroll, toujours visible après les polices */}
+        {/* Style du compteur — visible seulement à < 7 jours */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>
+            Style compteur précis
+          </Text>
+          <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
+            Actif automatiquement à moins de 7 jours de l'événement.
+          </Text>
+          <View style={styles.counterStyleList}>
+            {COUNTER_STYLES.map((cs) => {
+              const isActive = currentCounterStyle === cs.id;
+              return (
+                <TouchableOpacity
+                  key={cs.id}
+                  style={[
+                    styles.counterStyleBtn,
+                    isActive && styles.counterStyleBtnActive,
+                    cs.id === 'glass' && styles.counterStyleBtnGlass,
+                    cs.id === 'glass' && isActive && styles.counterStyleBtnGlassActive,
+                  ]}
+                  onPress={() => onUpdateEvent({ counterStyle: cs.id })}
+                  activeOpacity={0.7}
+                >
+                  {/* Preview chiffres */}
+                  <View style={[
+                    styles.counterPreviewBox,
+                    cs.id === 'glass' && styles.counterPreviewBoxGlass,
+                  ]}>
+                    <Text style={[
+                      styles.counterPreviewText,
+                      cs.id === 'glass' && styles.counterPreviewTextGlass,
+                      { fontFamily: 'Inter_700Bold' },
+                    ]}>
+                      {cs.preview}
+                    </Text>
+                  </View>
+
+                  {/* Label + description */}
+                  <View style={styles.counterStyleInfo}>
+                    <View style={styles.counterStyleRow}>
+                      <Text style={[styles.counterStyleLabel, { fontFamily: 'Inter_700Bold' }]}>
+                        {cs.label}
+                      </Text>
+                      {isActive && (
+                        <View style={styles.activeBadge}>
+                          <Text style={[styles.activeBadgeText, { fontFamily: 'Inter_700Bold' }]}>
+                            Actif
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.counterStyleDesc, { fontFamily: 'Inter_300Light' }]}>
+                      {cs.description}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Bouton Enregistrer */}
         <TouchableOpacity
           style={[styles.saveBtn, isLoading && { opacity: 0.5 }]}
           onPress={onSave}
@@ -328,7 +400,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: 'rgba(255,255,255,0.3)',
   },
-  // Date picker iOS
   datePicker: {
     height: 160,
     marginHorizontal: -8,
@@ -338,7 +409,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
   },
-  // Date button Android
   dateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -353,7 +423,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
   },
-  // Polices
   fontList: {
     gap: 8,
   },
@@ -387,7 +456,83 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: '#fff',
   },
-  // Bouton Enregistrer dans le scroll
+
+  // --- Style compteur ---
+  counterStyleList: {
+    gap: 10,
+  },
+  counterStyleBtn: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    overflow: 'hidden',
+  },
+  counterStyleBtnActive: {
+    borderColor: 'rgba(255,255,255,0.45)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  counterStyleBtnGlass: {
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  counterStyleBtnGlassActive: {
+    borderColor: 'rgba(255,255,255,0.40)',
+    backgroundColor: 'rgba(255,255,255,0.13)',
+  },
+  counterPreviewBox: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+  },
+  counterPreviewBoxGlass: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: 'rgba(255,255,255,0.12)',
+  },
+  counterPreviewText: {
+    fontSize: 20,
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  counterPreviewTextGlass: {
+    textShadowColor: 'rgba(255,255,255,0.2)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  counterStyleInfo: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 3,
+  },
+  counterStyleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  counterStyleLabel: {
+    fontSize: 13,
+    color: '#fff',
+  },
+  activeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+  },
+  activeBadgeText: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  counterStyleDesc: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.4)',
+  },
+
+  // --- Enregistrer ---
   saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
