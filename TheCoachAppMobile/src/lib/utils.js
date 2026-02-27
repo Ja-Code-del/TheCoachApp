@@ -8,11 +8,17 @@ export const DEFAULT_EVENT = () => ({
   theme: '',
   targetDate: '2026-12-31',
   fontId: 'inter',
-  counterStyle: 'default', // 'default' | 'glass'
-  totalDays: null,         // stocké à la sauvegarde pour le calcul thermique
+  counterStyle: 'default',
+  totalDays: null,
   quote: { text: '', author: '' },
   bgImage: null,
   photographer: null,
+  memoir: {
+    note: '',
+    photos: [],       // URIs locaux expo-image-picker
+    createdAt: null,  // timestamp ISO — null = pas encore souvenir
+  },
+  reminders: [],
 });
 
 export function calcDaysLeft(targetDate) {
@@ -46,4 +52,37 @@ export function calcTimeLeft(targetDate) {
   const isPrecise = days < 7;
 
   return { days, hours, minutes, isPrecise };
+}
+
+// Retourne true si l'event est un souvenir (date strictement passée)
+export function isMemoir(event) {
+  if (!event?.targetDate) return false;
+  const todayStr = new Date().toISOString().split('T')[0];
+  return event.targetDate < todayStr;
+}
+
+// "Il y a 2 mois", "Il y a 3 jours", "Il y a 1 an"
+export function calcTimeAgo(targetDate) {
+  if (!targetDate) return '';
+  const parts = targetDate.split('-').map(Number);
+  if (parts.length !== 3) return '';
+  const [y, m, d] = parts;
+  const past = new Date(y, m - 1, d);
+  const now = new Date();
+  const diffMs = now - past;
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffDays === 0) return "Aujourd'hui";
+  if (diffDays === 1) return 'Il y a 1 jour';
+  if (diffDays < 7) return `Il y a ${diffDays} jours`;
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7);
+    return weeks === 1 ? 'Il y a 1 semaine' : `Il y a ${weeks} semaines`;
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return months === 1 ? 'Il y a 1 mois' : `Il y a ${months} mois`;
+  }
+  const years = Math.floor(diffDays / 365);
+  return years === 1 ? 'Il y a 1 an' : `Il y a ${years} ans`;
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  View, Animated, ImageBackground, TouchableOpacity, Text,
+  View, Text, Animated, ImageBackground, TouchableOpacity,
   ActivityIndicator, Linking, StyleSheet, useWindowDimensions, Alert,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,21 +30,102 @@ import { useCarousel } from './hooks/useCarousel';
 import { useMediaGeneration } from './hooks/useMediaGeneration';
 import { useShare } from './hooks/useShare';
 import { useThermalGradient } from './hooks/useThermalGradient';
+import { useNotifications, scheduleEventReminders, cancelEventNotifications } from './hooks/useNotifications';
 import WelcomeScreen from './components/WelcomeScreen';
 import JourJScreen from './components/JourJScreen';
 import ShareCard from './components/ShareCard';
+import ShareCardMemoir from './components/ShareCardMemoir';
+import MemoirScreen from './components/MemoirScreen';
+import MemoirEditor from './components/MemoirEditor';
+import MemoirWelcomeScreen from './components/MemoirWelcomeScreen';
 import WidgetDisplay from './components/widget/WidgetDisplay';
 import WidgetSettings from './components/widget/WidgetSettings';
 import { FONTS } from './constants/fonts';
-import { calcDaysLeft, calcTimeLeft, DEFAULT_EVENT } from './lib/utils';
+import { calcDaysLeft, calcTimeLeft, isMemoir, DEFAULT_EVENT } from './lib/utils';
 
+// --- TOGGLE MODE ---
+function ModeToggle({ mode, onSwitch, light }) {
+  const translateX = useRef(new Animated.Value(mode === 'countdown' ? 0 : 1)).current;
+
+  useEffect(() => {
+    Animated.spring(translateX, {
+      toValue: mode === 'countdown' ? 0 : 1,
+      friction: 8,
+      tension: 60,
+      useNativeDriver: true,
+    }).start();
+  }, [mode]);
+
+  const pillTranslate = translateX.interpolate({
+    inputRange: [0, 1],
+    outputRange: [2, 118],
+  });
+
+  const wrapperBg   = light ? 'rgba(0,0,0,0.07)'   : 'rgba(0,0,0,0.25)';
+  const wrapperBorder = light ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.12)';
+  const pillBg      = light ? 'rgba(0,0,0,0.09)'   : 'rgba(255,255,255,0.15)';
+  const pillBorder  = light ? 'rgba(0,0,0,0.13)'   : 'rgba(255,255,255,0.25)';
+  const labelColor  = light ? 'rgba(0,0,0,0.38)'   : 'rgba(255,255,255,0.4)';
+  const labelActiveColor = light ? '#1a1a2e' : '#fff';
+
+  return (
+    <View style={[toggleStyles.wrapper, { backgroundColor: wrapperBg, borderColor: wrapperBorder }]}>
+      <Animated.View style={[
+        toggleStyles.pill,
+        { backgroundColor: pillBg, borderColor: pillBorder, transform: [{ translateX: pillTranslate }] },
+      ]} />
+      <TouchableOpacity style={toggleStyles.tab} onPress={() => onSwitch('countdown')} activeOpacity={0.7}>
+        <Text style={[toggleStyles.label, { color: mode === 'countdown' ? labelActiveColor : labelColor }]}>
+          Événements
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={toggleStyles.tab} onPress={() => onSwitch('memoir')} activeOpacity={0.7}>
+        <Text style={[toggleStyles.label, { color: mode === 'memoir' ? labelActiveColor : labelColor }]}>
+          Souvenirs
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const toggleStyles = StyleSheet.create({
+  wrapper: {
+    flexDirection: 'row',
+    borderRadius: 20,
+    padding: 2,
+    marginBottom: 12,
+    alignSelf: 'center',
+    borderWidth: 1,
+    position: 'relative',
+  },
+  pill: {
+    position: 'absolute',
+    top: 2,
+    width: 116,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  tab: {
+    width: 118,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 13,
+    fontFamily: 'Inter_700Bold',
+  },
+});
+
+// --- APP ---
 export default function App() {
   const shareCardRef = useRef(null);
+  const memoirCardRef = useRef(null);
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = Math.min(screenWidth - 48, 420);
 
-  // --- Chargement des polices ---
   const [fontsLoaded] = useFonts({
     Inter_300Light, Inter_700Bold, Inter_900Black,
     BebasNeue_400Regular,
@@ -54,12 +136,14 @@ export default function App() {
     SpaceGrotesk_300Light, SpaceGrotesk_500Medium, SpaceGrotesk_700Bold,
   });
 
-  // --- Premier lancement ---
   const [isFirstLaunch, setIsFirstLaunch] = useState(null);
   const [welcomeVisible, setWelcomeVisible] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isNewEvent, setIsNewEvent] = useState(false);
+  const [mode, setMode] = useState('countdown'); // 'countdown' | 'memoir'
+  const [isMemoirEditing, setIsMemoirEditing] = useState(false);
+  const [memoirTheme, setMemoirTheme] = useState('light'); // 'light' | 'dark'
 
   useEffect(() => {
     AsyncStorage.getItem('hasLaunched').then(value => {
@@ -67,13 +151,25 @@ export default function App() {
       setIsFirstLaunch(firstLaunch);
       setWelcomeVisible(firstLaunch);
     });
+    AsyncStorage.getItem('memoirTheme').then(v => {
+      if (v === 'light' || v === 'dark') setMemoirTheme(v);
+    });
   }, []);
 
-  // --- Hooks ---
+  const toggleMemoirTheme = () => {
+    const next = memoirTheme === 'light' ? 'dark' : 'light';
+    setMemoirTheme(next);
+    AsyncStorage.setItem('memoirTheme', next);
+  };
+
+  const memoirIsDark = memoirTheme === 'dark';
+
   const {
     events, setEvents, activeIndex, setActiveIndex, activeEvent, isReady,
     updateActiveEvent, updateEventById, appendEvent, deleteActiveEvent,
   } = useEvents();
+
+  useNotifications(events);
 
   const { switchTo, fadeVisible, handleTouchStart, handleTouchEnd } = useCarousel(
     events.length, activeIndex, setActiveIndex
@@ -85,7 +181,6 @@ export default function App() {
     quoteError, resetQuoteError,
   } = useMediaGeneration(activeEvent, updateEventById);
 
-  // --- Valeurs dérivées mémoïsées ---
   const currentFont = useMemo(
     () => FONTS.find(f => f.id === activeEvent.fontId) || FONTS[0],
     [activeEvent.fontId]
@@ -107,14 +202,30 @@ export default function App() {
 
   const daysLeft = timeLeft.days;
 
-  const todayStr = useMemo(
-    () => new Date().toISOString().split('T')[0],
-    []
-  );
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const isJourJ = daysLeft === 0 && !!activeEvent.theme && activeEvent.targetDate === todayStr;
 
-  // --- Pourcentage thermique ---
+  // --- Events filtrés par mode ---
+  const countdownEvents = useMemo(
+    () => events.filter(e => !isMemoir(e)),
+    [events, todayStr]
+  );
+  const memoirEvents = useMemo(
+    () => events.filter(e => isMemoir(e)),
+    [events, todayStr]
+  );
+
+  // Index actif dans chaque liste
+  const activeMemoirIndex = useMemo(() => {
+    if (memoirEvents.length === 0) return 0;
+    const idx = memoirEvents.findIndex(e => e.id === activeEvent.id);
+    return idx >= 0 ? idx : memoirEvents.length - 1; // dernier par défaut
+  }, [memoirEvents, activeEvent.id]);
+
+  const activeMemoirEvent = memoirEvents[activeMemoirIndex] || memoirEvents[memoirEvents.length - 1];
+
+  // --- Gradient thermique (countdown uniquement) ---
   const percentage = useMemo(() => {
     const total = activeEvent.totalDays;
     if (!total || total <= 0) return 100;
@@ -127,21 +238,36 @@ export default function App() {
     shareCardRef, activeEvent, daysLeft, isJourJ
   );
 
-  // --- Fade du carousel ---
+  // Share souvenir
+  const { handleShare: handleShareMemoir, isSharing: isSharingMemoir } = useShare(
+    memoirCardRef, activeMemoirEvent, 0, false
+  );
+
+  // --- Fade carousel ---
   useEffect(() => {
-    const shouldShow = isFirstLaunch === false && !isJourJ;
+    const shouldShow = isFirstLaunch === false && !isJourJ && mode === 'countdown';
     Animated.timing(contentOpacity, {
       toValue: (shouldShow && fadeVisible) ? 1 : 0,
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, [fadeVisible, isFirstLaunch, isJourJ]);
+  }, [fadeVisible, isFirstLaunch, isJourJ, mode]);
 
-  // --- Resets ---
   useEffect(() => { resetQuoteError(); }, [activeIndex, resetQuoteError]);
   useEffect(() => { if (!isSettingsOpen) setConfirmDelete(false); }, [isSettingsOpen]);
 
-  // --- Ajouter un événement ---
+  // Basculement de mode : pointe vers le premier event du mode cible
+  const handleSwitchMode = (newMode) => {
+    if (newMode === 'memoir' && memoirEvents.length > 0) {
+      const globalIdx = events.findIndex(e => e.id === memoirEvents[0].id);
+      if (globalIdx >= 0) setActiveIndex(globalIdx);
+    } else if (newMode === 'countdown' && countdownEvents.length > 0) {
+      const globalIdx = events.findIndex(e => e.id === countdownEvents[0].id);
+      if (globalIdx >= 0) setActiveIndex(globalIdx);
+    }
+    setMode(newMode);
+  };
+
   const addEvent = () => {
     const newEvent = DEFAULT_EVENT();
     setEvents(prev => {
@@ -155,17 +281,13 @@ export default function App() {
     });
   };
 
-  // --- Fermer les réglages ---
   const handleCloseSettings = () => {
     if (isNewEvent) {
       Alert.alert(
         'Abandonner la création ?',
         'Cet événement ne sera pas sauvegardé.',
         [
-          {
-            text: 'Continuer la création',
-            style: 'cancel',
-          },
+          { text: 'Continuer la création', style: 'cancel' },
           {
             text: 'Abandonner',
             style: 'destructive',
@@ -182,13 +304,12 @@ export default function App() {
     }
   };
 
-  // --- Sauvegarder les réglages ---
   const handleSaveSettings = async () => {
-    // Stocker totalDays au moment de la sauvegarde
     updateActiveEvent({ totalDays: calcDaysLeft(activeEvent.targetDate) });
     setIsNewEvent(false);
     setIsSettingsOpen(false);
     await Promise.all([generateQuote(), loadImage()]);
+    scheduleEventReminders(activeEvent);
   };
 
   const handleStart = () => {
@@ -202,11 +323,41 @@ export default function App() {
   };
 
   const handleDelete = () => {
+    cancelEventNotifications(activeEvent.id);
     deleteActiveEvent();
     setConfirmDelete(false);
   };
 
-  // --- Splash screen ---
+  // Supprimer un souvenir
+  const handleDeleteMemoir = () => {
+    if (!activeMemoirEvent) return;
+    Alert.alert(
+      'Supprimer ce souvenir ?',
+      'L\'événement et son souvenir seront supprimés définitivement.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            // Pointer activeIndex sur l'event concerné avant delete
+            const globalIdx = events.findIndex(e => e.id === activeMemoirEvent.id);
+            if (globalIdx >= 0) {
+              setActiveIndex(globalIdx);
+              setTimeout(() => deleteActiveEvent(), 50);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Sauvegarder le souvenir édité
+  const handleSaveMemoir = (patch) => {
+    if (!activeMemoirEvent) return;
+    updateEventById(activeMemoirEvent.id, patch);
+  };
+
   if (!fontsLoaded || isFirstLaunch === null || !isReady) {
     return (
       <SafeAreaProvider>
@@ -219,14 +370,20 @@ export default function App() {
   }
 
   const contentPointerEvents = (isFirstLaunch !== false || isJourJ) ? 'none' : 'box-none';
+  const showToggle = !isFirstLaunch && (countdownEvents.length > 0 || memoirEvents.length > 0);
 
   return (
     <SafeAreaProvider>
-      <LinearGradient colors={bgColors} style={styles.root}>
+      <LinearGradient
+        colors={mode === 'memoir'
+          ? (memoirIsDark ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#ffffff', '#ffffff'])
+          : bgColors}
+        style={styles.root}
+      >
         <SafeAreaView style={styles.safeArea}>
-          <StatusBar style="light" />
+          <StatusBar style={mode === 'memoir' ? (memoirIsDark ? 'light' : 'dark') : 'light'} />
 
-          {/* ShareCard hors-écran pour captureRef */}
+          {/* ShareCard countdown hors-écran */}
           <ShareCard
             cardRef={shareCardRef}
             daysLeft={daysLeft}
@@ -238,122 +395,205 @@ export default function App() {
             isJourJ={isJourJ}
           />
 
+          {/* ShareCard souvenir hors-écran */}
+          {activeMemoirEvent && (
+            <ShareCardMemoir
+              cardRef={memoirCardRef}
+              event={activeMemoirEvent}
+            />
+          )}
+
           <View style={styles.outer}>
-            <View
-              style={[styles.card, { width: cardWidth }]}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              {/* Fond : image Unsplash ou gradient thermique */}
-              {activeEvent.bgImage ? (
-                <ImageBackground
-                  source={{ uri: activeEvent.bgImage }}
-                  style={StyleSheet.absoluteFillObject}
-                  resizeMode="cover"
-                  blurRadius={2}
-                >
-                  <View style={[StyleSheet.absoluteFillObject, styles.overlayImage]} />
-                </ImageBackground>
-              ) : (
-                <LinearGradient
-                  colors={cardColors}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              )}
 
-              {/* Bulle décorative */}
-              <View style={styles.decorCircle} pointerEvents="none" />
+            {/* Toggle mode */}
+            {showToggle && (
+              <ModeToggle mode={mode} onSwitch={handleSwitchMode} light={mode === 'memoir' && !memoirIsDark} />
+            )}
 
-              {/* Indicateur chargement image */}
-              {isLoadingImage && !isFirstLaunch && !isJourJ && (
-                <View style={styles.loadingImageBadge} pointerEvents="none">
-                  <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
-                  <Text style={styles.loadingImageText}>Nouvelle image…</Text>
-                </View>
-              )}
+            {/* ——— MODE SOUVENIR ——— */}
+            {mode === 'memoir' ? (
+              <View style={[
+                styles.card,
+                styles.cardMemoir,
+                { width: cardWidth },
+                memoirIsDark && styles.cardMemoirDark,
+              ]}>
 
-              {/* Crédit Unsplash */}
-              {activeEvent.photographer && !isFirstLaunch && !isJourJ && (
-                <TouchableOpacity
-                  style={styles.credit}
-                  onPress={() => Linking.openURL(
-                    `${activeEvent.photographer.url}?utm_source=countdown_app&utm_medium=referral`
-                  )}
-                >
-                  <Text style={styles.creditText}>
-                    📷 {activeEvent.photographer.name} / Unsplash
-                  </Text>
-                </TouchableOpacity>
-              )}
+                {/* Overlay sombre (thème dark uniquement) */}
+                {memoirIsDark && (
+                  <View style={[StyleSheet.absoluteFillObject, styles.overlayMemoirDark]} />
+                )}
 
-              {/* Dots pagination */}
-              {events.length > 1 && !isSettingsOpen && !isFirstLaunch && (
-                <View style={styles.dots}>
-                  {events.map((_, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      onPress={() => switchTo(i)}
-                      style={[styles.dot, i === activeIndex && styles.dotActive]}
+                {/* Bouton thème ☀️ / 🌙 */}
+                {!isMemoirEditing && (
+                  <TouchableOpacity
+                    style={[styles.memoirThemeBtn, memoirIsDark && styles.memoirThemeBtnDark]}
+                    onPress={toggleMemoirTheme}
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name={memoirIsDark ? 'sun' : 'moon'}
+                      size={14}
+                      color={memoirIsDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)'}
                     />
-                  ))}
-                </View>
-              )}
+                  </TouchableOpacity>
+                )}
 
-              {/* Écran de bienvenue */}
-              {isFirstLaunch && (
-                <WelcomeScreen onStart={handleStart} visible={welcomeVisible} />
-              )}
-
-              {/* Jour J */}
-              {isJourJ && !isFirstLaunch && (
-                <JourJScreen
-                  eventName={activeEvent.eventName}
-                  theme={activeEvent.theme}
-                  onShare={handleShare}
-                  isSharing={isSharing}
-                />
-              )}
-
-              {/* Contenu principal avec fondu */}
-              <Animated.View
-                style={{ opacity: contentOpacity }}
-                pointerEvents={contentPointerEvents}
-              >
-                {!isSettingsOpen ? (
-                  <WidgetDisplay
-                    activeEvent={activeEvent}
-                    daysLeft={daysLeft}
-                    timeLeft={timeLeft}
-                    currentFont={currentFont}
-                    isLoadingQuote={isLoadingQuote}
-                    quoteError={quoteError}
-                    isLoadingImage={isLoadingImage}
-                    isSharing={isSharing}
-                    shareError={shareError}
-                    saveSuccess={saveSuccess}
-                    onAddEvent={addEvent}
-                    onOpenSettings={() => setIsSettingsOpen(true)}
-                    onRefreshImage={() => loadImage()}
-                    onRefreshQuote={() => generateQuote()}
-                    onShare={handleShare}
+                {memoirEvents.length === 0 ? (
+                  /* Page de bienvenue */
+                  <MemoirWelcomeScreen isDark={memoirIsDark} />
+                ) : isMemoirEditing ? (
+                  <MemoirEditor
+                    event={activeMemoirEvent}
+                    onSave={handleSaveMemoir}
+                    onClose={() => setIsMemoirEditing(false)}
+                    isDark={memoirIsDark}
                   />
                 ) : (
-                  <WidgetSettings
-                    activeEvent={activeEvent}
-                    eventsCount={events.length}
-                    confirmDelete={confirmDelete}
-                    setConfirmDelete={setConfirmDelete}
-                    isLoadingQuote={isLoadingQuote}
-                    isLoadingImage={isLoadingImage}
-                    onUpdateEvent={updateActiveEvent}
-                    onSave={handleSaveSettings}
-                    onClose={handleCloseSettings}
-                    onDelete={handleDelete}
+                  <MemoirScreen
+                    event={activeMemoirEvent}
+                    onEdit={() => setIsMemoirEditing(true)}
+                    onShare={handleShareMemoir}
+                    onDelete={handleDeleteMemoir}
+                    isSharing={isSharingMemoir}
+                    isDark={memoirIsDark}
                   />
                 )}
-              </Animated.View>
 
-            </View>
+                {/* Dots pagination souvenirs */}
+                {memoirEvents.length > 1 && !isMemoirEditing && (
+                  <View style={styles.dots}>
+                    {memoirEvents.map((e, i) => (
+                      <TouchableOpacity
+                        key={e.id}
+                        onPress={() => {
+                          const globalIdx = events.findIndex(ev => ev.id === e.id);
+                          if (globalIdx >= 0) setActiveIndex(globalIdx);
+                        }}
+                        style={[
+                          styles.dot,
+                          { backgroundColor: memoirIsDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.18)' },
+                          i === activeMemoirIndex && {
+                            backgroundColor: memoirIsDark ? '#ffffff' : '#1a1a2e',
+                            width: 16,
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+
+            ) : (
+              /* ——— MODE COUNTDOWN ——— */
+              <View
+                style={[styles.card, { width: cardWidth }]}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                {activeEvent.bgImage ? (
+                  <ImageBackground
+                    source={{ uri: activeEvent.bgImage }}
+                    style={StyleSheet.absoluteFillObject}
+                    resizeMode="cover"
+                    blurRadius={2}
+                  >
+                    <View style={[StyleSheet.absoluteFillObject, styles.overlayImage]} />
+                  </ImageBackground>
+                ) : (
+                  <LinearGradient colors={cardColors} style={StyleSheet.absoluteFillObject} />
+                )}
+
+                <View style={styles.decorCircle} pointerEvents="none" />
+
+                {isLoadingImage && !isFirstLaunch && !isJourJ && (
+                  <View style={styles.loadingImageBadge} pointerEvents="none">
+                    <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
+                    <Text style={styles.loadingImageText}>Nouvelle image…</Text>
+                  </View>
+                )}
+
+                {activeEvent.photographer && !isFirstLaunch && !isJourJ && (
+                  <TouchableOpacity
+                    style={styles.credit}
+                    onPress={() => Linking.openURL(
+                      `${activeEvent.photographer.url}?utm_source=countdown_app&utm_medium=referral`
+                    )}
+                  >
+                    <Text style={styles.creditText}>
+                      📷 {activeEvent.photographer.name} / Unsplash
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {countdownEvents.length > 1 && !isSettingsOpen && !isFirstLaunch && (
+                  <View style={styles.dots}>
+                    {countdownEvents.map((e, i) => (
+                      <TouchableOpacity
+                        key={e.id}
+                        onPress={() => {
+                          const globalIdx = events.findIndex(ev => ev.id === e.id);
+                          if (globalIdx >= 0) switchTo(globalIdx);
+                        }}
+                        style={[styles.dot, events[activeIndex]?.id === e.id && styles.dotActive]}
+                      />
+                    ))}
+                  </View>
+                )}
+
+                {isFirstLaunch && (
+                  <WelcomeScreen onStart={handleStart} visible={welcomeVisible} />
+                )}
+
+                {isJourJ && !isFirstLaunch && (
+                  <JourJScreen
+                    eventName={activeEvent.eventName}
+                    theme={activeEvent.theme}
+                    onShare={handleShare}
+                    isSharing={isSharing}
+                  />
+                )}
+
+                <Animated.View
+                  style={{ opacity: contentOpacity }}
+                  pointerEvents={contentPointerEvents}
+                >
+                  {!isSettingsOpen ? (
+                    <WidgetDisplay
+                      activeEvent={activeEvent}
+                      daysLeft={daysLeft}
+                      timeLeft={timeLeft}
+                      currentFont={currentFont}
+                      isLoadingQuote={isLoadingQuote}
+                      quoteError={quoteError}
+                      isLoadingImage={isLoadingImage}
+                      isSharing={isSharing}
+                      shareError={shareError}
+                      saveSuccess={saveSuccess}
+                      onAddEvent={addEvent}
+                      onOpenSettings={() => setIsSettingsOpen(true)}
+                      onRefreshImage={() => loadImage()}
+                      onRefreshQuote={() => generateQuote()}
+                      onShare={handleShare}
+                    />
+                  ) : (
+                    <WidgetSettings
+                      activeEvent={activeEvent}
+                      eventsCount={events.length}
+                      confirmDelete={confirmDelete}
+                      setConfirmDelete={setConfirmDelete}
+                      isLoadingQuote={isLoadingQuote}
+                      isLoadingImage={isLoadingImage}
+                      onUpdateEvent={updateActiveEvent}
+                      onSave={handleSaveSettings}
+                      onClose={handleCloseSettings}
+                      onDelete={handleDelete}
+                    />
+                  )}
+                </Animated.View>
+              </View>
+            )}
+
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -367,16 +607,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  root: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+  root: { flex: 1 },
+  safeArea: { flex: 1 },
   outer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: 8,
   },
   card: {
     borderRadius: 48,
@@ -390,7 +627,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 50,
     elevation: 20,
-    backgroundColor: '#0a0a2e', // ← couleur froide neutre, couverte par le gradient
+    backgroundColor: '#0a0a2e',
+  },
+  cardMemoir: {
+    backgroundColor: '#ffffff',
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  cardMemoirDark: {
+    backgroundColor: '#0d1530',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  overlayMemoirDark: {
+    backgroundColor: 'rgba(10,15,40,0.55)',
+  },
+  memoirThemeBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 20,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.09)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memoirThemeBtnDark: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   overlayImage: {
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -455,5 +721,29 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#fff',
+  },
+  emptyMemoir: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 40,
+    minHeight: 480,
+  },
+  emptyMemoirIcon: {
+    fontSize: 40,
+  },
+  emptyMemoirTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter_900Black',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  emptyMemoirSub: {
+    fontSize: 13,
+    fontFamily: 'Inter_300Light',
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
