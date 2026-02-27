@@ -15,7 +15,14 @@ export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
     return () => clearTimeout(t);
   }, [shareError]);
 
-  // Ref pour stabiliser handleShare sans le recréer à chaque frappe
+  // Auto-clear saveSuccess après 3s avec cleanup
+  useEffect(() => {
+    if (!saveSuccess) return;
+    const t = setTimeout(() => setSaveSuccess(false), 3000);
+    return () => clearTimeout(t);
+  }, [saveSuccess]);
+
+  // Refs pour stabiliser handleShare sans le recréer à chaque frappe
   const activeEventRef = useRef(activeEvent);
   useEffect(() => { activeEventRef.current = activeEvent; }, [activeEvent]);
 
@@ -35,11 +42,10 @@ export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
     const jourJ = isJourJRef.current;
 
     try {
-      // Capture la ShareCard en JPEG via react-native-view-shot
       const uri = await captureRef(shareCardRef, {
         format: 'jpg',
         quality: 0.92,
-        result: 'tmpfile', // Fichier temporaire sur le device
+        result: 'tmpfile',
       });
 
       const isAvailable = await Sharing.isAvailableAsync();
@@ -57,10 +63,7 @@ export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
         const { status } = await MediaLibrary.requestPermissionsAsync();
         if (status === 'granted') {
           await MediaLibrary.saveToLibraryAsync(uri);
-          // Ajouter un état imageSaved temporaire
-          //setShareError(null);
-          setSaveSuccess(true); // ← nouveau state
-          setTimeout(() => setSaveSuccess(false), 3000);
+          setSaveSuccess(true);
         } else {
           setShareError("Permission refusée pour accéder à la galerie.");
         }
