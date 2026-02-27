@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Animated, ImageBackground, TouchableOpacity, Text,
-  ActivityIndicator, Linking, StyleSheet, useWindowDimensions,
+  ActivityIndicator, Linking, StyleSheet, useWindowDimensions, Alert,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -34,7 +34,7 @@ import ShareCard from './components/ShareCard';
 import WidgetDisplay from './components/widget/WidgetDisplay';
 import WidgetSettings from './components/widget/WidgetSettings';
 import { FONTS } from './constants/fonts';
-import { calcDaysLeft, DEFAULT_EVENT } from './lib/utils';
+import { calcTimeLeft, DEFAULT_EVENT } from './lib/utils';
 
 export default function App() {
   const shareCardRef = useRef(null);
@@ -58,6 +58,7 @@ export default function App() {
   const [welcomeVisible, setWelcomeVisible] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isNewEvent, setIsNewEvent] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem('hasLaunched').then(value => {
@@ -89,10 +90,21 @@ export default function App() {
     [activeEvent.fontId]
   );
 
-  const daysLeft = useMemo(
-    () => calcDaysLeft(activeEvent.targetDate),
-    [activeEvent.targetDate]
-  );
+  const [timeLeft, setTimeLeft] = useState(() => calcTimeLeft(activeEvent.targetDate));
+
+  useEffect(() => {
+    setTimeLeft(calcTimeLeft(activeEvent.targetDate));
+  }, [activeEvent.targetDate]);
+
+  useEffect(() => {
+    if (!timeLeft.isPrecise) return;
+    const interval = setInterval(() => {
+      setTimeLeft(calcTimeLeft(activeEvent.targetDate));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [timeLeft.isPrecise, activeEvent.targetDate]);
+
+  const daysLeft = timeLeft.days;
 
   const todayStr = useMemo(
     () => new Date().toISOString().split('T')[0],
@@ -127,12 +139,42 @@ export default function App() {
       setTimeout(() => {
         switchTo(newIndex);
         setIsSettingsOpen(true);
+        setIsNewEvent(true);
       }, 50);
       return [...prev, newEvent];
     });
   };
 
+  // --- Fermer les réglages ---
+  const handleCloseSettings = () => {
+    if (isNewEvent) {
+      Alert.alert(
+        'Abandonner la création ?',
+        'Cet événement ne sera pas sauvegardé.',
+        [
+          {
+            text: 'Continuer la création',
+            style: 'cancel',
+          },
+          {
+            text: 'Abandonner',
+            style: 'destructive',
+            onPress: () => {
+              setIsNewEvent(false);
+              setIsSettingsOpen(false);
+              deleteActiveEvent();
+            },
+          },
+        ]
+      );
+    } else {
+      setIsSettingsOpen(false);
+    }
+  };
+
+  // --- Sauvegarder les réglages ---
   const handleSaveSettings = async () => {
+    setIsNewEvent(false);
     setIsSettingsOpen(false);
     await Promise.all([generateQuote(), loadImage()]);
   };
@@ -143,6 +185,7 @@ export default function App() {
       setIsFirstLaunch(false);
       AsyncStorage.setItem('hasLaunched', 'true');
       setIsSettingsOpen(true);
+      setIsNewEvent(true);
     }, 700);
   };
 
@@ -265,6 +308,7 @@ export default function App() {
                   <WidgetDisplay
                     activeEvent={activeEvent}
                     daysLeft={daysLeft}
+                    timeLeft={timeLeft}
                     currentFont={currentFont}
                     isLoadingQuote={isLoadingQuote}
                     quoteError={quoteError}
@@ -288,7 +332,7 @@ export default function App() {
                     isLoadingImage={isLoadingImage}
                     onUpdateEvent={updateActiveEvent}
                     onSave={handleSaveSettings}
-                    onClose={() => setIsSettingsOpen(false)}
+                    onClose={handleCloseSettings}
                     onDelete={handleDelete}
                   />
                 )}
