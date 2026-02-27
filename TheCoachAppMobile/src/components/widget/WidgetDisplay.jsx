@@ -41,7 +41,6 @@ function Tooltip({ label, children }) {
 
 const tooltipStyles = StyleSheet.create({
   wrapper: {
-    position: 'relative',
     alignItems: 'center',
   },
   tooltip: {
@@ -55,18 +54,12 @@ const tooltipStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     zIndex: 100,
-    alignSelf: 'center',   // centré sous le bouton
-    width: 100,
   },
   label: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.85)',
     fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
-    numberOfLines: 1,      // force une seule ligne
-    flexShrink: 0,  // ne se compresse pas
-    width: 'fit-content', // largeur selon le contenu (non standard, mais fonctionne dans RN)
-    alignContent: 'center',          
   },
 });
 
@@ -112,29 +105,39 @@ export default function WidgetDisplay({
         </View>
       </View>
 
-      {/* Chiffre */}
+      {/* Compteur */}
       <View style={styles.counterBlock}>
+
+        {/* Nom de l'événement — badge en évidence au-dessus du chiffre */}
+        {(activeEvent.eventName || activeEvent.theme) && (
+          <View style={styles.eventNameBadge}>
+            <Text
+              style={[styles.eventNameText, { fontFamily: 'Inter_700Bold' }]}
+              numberOfLines={1}
+            >
+              {activeEvent.eventName || activeEvent.theme}
+            </Text>
+          </View>
+        )}
+
         <Text style={[styles.daysNumber, {
           fontFamily: currentFont.numberStyle.fontFamily,
         }]}>
           {daysLeft}
         </Text>
+
         <Text style={[styles.daysLabel, {
           fontFamily: currentFont.labelStyle.fontFamily,
           letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
         }]}>
           Jours restants
         </Text>
-        {(activeEvent.eventName || activeEvent.theme) && (
-          <Text style={[styles.eventName, { fontFamily: 'Inter_300Light' }]}>
-            — {activeEvent.eventName || activeEvent.theme}
-          </Text>
-        )}
+
       </View>
 
       {/* Citation */}
       <View style={styles.quoteBox}>
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <ScrollView showsVerticalScrollIndicator={false}>
           {isLoadingQuote ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />
@@ -219,7 +222,6 @@ export default function WidgetDisplay({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 20,
@@ -248,6 +250,23 @@ const styles = StyleSheet.create({
   },
   counterBlock: {
     alignItems: 'center',
+    gap: 4,
+  },
+  eventNameBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+    marginBottom: 4,
+    maxWidth: '80%',
+  },
+  eventNameText: {
+    fontSize: 13,
+    color: '#fff',
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   daysNumber: {
     fontSize: 96,
@@ -261,16 +280,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textTransform: 'uppercase',
     color: 'rgba(255,255,255,0.5)',
-    marginTop: 4,
-  },
-  eventName: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.4)',
-    fontStyle: 'italic',
-    marginTop: 4,
+    marginTop: 2,
   },
   quoteBox: {
-    flex: 1,
+    minHeight: 100,
     backgroundColor: 'rgba(0,0,0,0.2)',
     borderRadius: 24,
     borderWidth: 1,
