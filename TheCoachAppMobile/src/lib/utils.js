@@ -9,6 +9,7 @@ export const DEFAULT_EVENT = () => ({
   targetDate: '2026-12-31',
   fontId: 'inter',
   counterStyle: 'default', // 'default' | 'glass'
+  totalDays: null,         // stocké à la sauvegarde pour le calcul thermique
   quote: { text: '', author: '' },
   bgImage: null,
   photographer: null,

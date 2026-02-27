@@ -28,13 +28,14 @@ import { useEvents } from './hooks/useEvents';
 import { useCarousel } from './hooks/useCarousel';
 import { useMediaGeneration } from './hooks/useMediaGeneration';
 import { useShare } from './hooks/useShare';
+import { useThermalGradient } from './hooks/useThermalGradient';
 import WelcomeScreen from './components/WelcomeScreen';
 import JourJScreen from './components/JourJScreen';
 import ShareCard from './components/ShareCard';
 import WidgetDisplay from './components/widget/WidgetDisplay';
 import WidgetSettings from './components/widget/WidgetSettings';
 import { FONTS } from './constants/fonts';
-import { calcTimeLeft, DEFAULT_EVENT } from './lib/utils';
+import { calcDaysLeft, calcTimeLeft, DEFAULT_EVENT } from './lib/utils';
 
 export default function App() {
   const shareCardRef = useRef(null);
@@ -113,6 +114,15 @@ export default function App() {
 
   const isJourJ = daysLeft === 0 && !!activeEvent.theme && activeEvent.targetDate === todayStr;
 
+  // --- Pourcentage thermique ---
+  const percentage = useMemo(() => {
+    const total = activeEvent.totalDays;
+    if (!total || total <= 0) return 100;
+    return Math.max(0, Math.min(100, Math.round((daysLeft / total) * 100)));
+  }, [daysLeft, activeEvent.totalDays]);
+
+  const { bgColors, cardColors } = useThermalGradient(percentage);
+
   const { handleShare, isSharing, shareError, saveSuccess } = useShare(
     shareCardRef, activeEvent, daysLeft, isJourJ
   );
@@ -131,7 +141,7 @@ export default function App() {
   useEffect(() => { resetQuoteError(); }, [activeIndex, resetQuoteError]);
   useEffect(() => { if (!isSettingsOpen) setConfirmDelete(false); }, [isSettingsOpen]);
 
-  // --- Ajouter un événement (fix race condition) ---
+  // --- Ajouter un événement ---
   const addEvent = () => {
     const newEvent = DEFAULT_EVENT();
     setEvents(prev => {
@@ -174,6 +184,8 @@ export default function App() {
 
   // --- Sauvegarder les réglages ---
   const handleSaveSettings = async () => {
+    // Stocker totalDays au moment de la sauvegarde
+    updateActiveEvent({ totalDays: calcDaysLeft(activeEvent.targetDate) });
     setIsNewEvent(false);
     setIsSettingsOpen(false);
     await Promise.all([generateQuote(), loadImage()]);
@@ -210,7 +222,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <LinearGradient colors={['#1a2a6c', '#b21f1f', '#fdbb2d']} style={styles.root}>
+      <LinearGradient colors={bgColors} style={styles.root}>
         <SafeAreaView style={styles.safeArea}>
           <StatusBar style="light" />
 
@@ -232,7 +244,7 @@ export default function App() {
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
-              {/* Fond : image ou couleur */}
+              {/* Fond : image Unsplash ou gradient thermique */}
               {activeEvent.bgImage ? (
                 <ImageBackground
                   source={{ uri: activeEvent.bgImage }}
@@ -243,7 +255,10 @@ export default function App() {
                   <View style={[StyleSheet.absoluteFillObject, styles.overlayImage]} />
                 </ImageBackground>
               ) : (
-                <View style={[StyleSheet.absoluteFillObject, styles.overlayDefault]} />
+                <LinearGradient
+                  colors={cardColors}
+                  style={StyleSheet.absoluteFillObject}
+                />
               )}
 
               {/* Bulle décorative */}
@@ -375,14 +390,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 50,
     elevation: 20,
-    backgroundColor: '#1a2a6c',
+    backgroundColor: '#0a0a2e', // ← couleur froide neutre, couverte par le gradient
   },
   overlayImage: {
     backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  overlayDefault: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   decorCircle: {
     position: 'absolute',
