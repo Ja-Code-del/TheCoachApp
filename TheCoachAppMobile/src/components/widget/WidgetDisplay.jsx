@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, Animated,
@@ -63,13 +63,107 @@ const tooltipStyles = StyleSheet.create({
   },
 });
 
+// --- COMPTEUR PRÉCIS avec animation fade + vague ---
+function PreciseCounter({ timeLeft, currentFont, counterStyle }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(10)).current;
+
+  // Rejoue l'animation à chaque changement de minute
+  useEffect(() => {
+    fadeAnim.setValue(0);
+    slideAnim.setValue(10);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 12,
+        tension: 30,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [timeLeft.hours, timeLeft.minutes]);
+
+  const isGlass = counterStyle === 'glass';
+
+  return (
+    <Animated.View
+      style={[
+        styles.preciseWrapper,
+        isGlass && styles.preciseWrapperGlass,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+      ]}
+    >
+      <View style={styles.preciseBlock}>
+
+        {timeLeft.days > 0 && (
+          <>
+            <View style={styles.preciseCell}>
+              <Text style={[
+                styles.preciseNumber,
+                isGlass && styles.preciseNumberGlass,
+                { fontFamily: currentFont.numberStyle.fontFamily },
+              ]}>
+                {timeLeft.days}
+              </Text>
+              <Text style={[styles.preciseUnit, isGlass && styles.preciseUnitGlass]}>j</Text>
+            </View>
+            <Text style={[styles.preciseSep, isGlass && styles.preciseSepGlass]}>·</Text>
+          </>
+        )}
+
+        <View style={styles.preciseCell}>
+          <Text style={[
+            styles.preciseNumber,
+            isGlass && styles.preciseNumberGlass,
+            { fontFamily: currentFont.numberStyle.fontFamily },
+          ]}>
+            {String(timeLeft.hours).padStart(2, '0')}
+          </Text>
+          <Text style={[styles.preciseUnit, isGlass && styles.preciseUnitGlass]}>h</Text>
+        </View>
+
+        <Text style={[styles.preciseSep, isGlass && styles.preciseSepGlass]}>·</Text>
+
+        <View style={styles.preciseCell}>
+          <Text style={[
+            styles.preciseNumber,
+            isGlass && styles.preciseNumberGlass,
+            { fontFamily: currentFont.numberStyle.fontFamily },
+          ]}>
+            {String(timeLeft.minutes).padStart(2, '0')}
+          </Text>
+          <Text style={[styles.preciseUnit, isGlass && styles.preciseUnitGlass]}>min</Text>
+        </View>
+
+      </View>
+
+      <Text style={[
+        styles.daysLabel,
+        isGlass && styles.daysLabelGlass,
+        {
+          fontFamily: currentFont.labelStyle.fontFamily,
+          letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
+        },
+      ]}>
+        Restants
+      </Text>
+    </Animated.View>
+  );
+}
+
 // --- WIDGET DISPLAY ---
 export default function WidgetDisplay({
-  activeEvent, daysLeft, currentFont,
+  activeEvent, daysLeft, timeLeft, currentFont,
   isLoadingQuote, quoteError, isLoadingImage,
   isSharing, shareError, saveSuccess,
   onAddEvent, onOpenSettings, onRefreshImage, onRefreshQuote, onShare,
 }) {
+  const counterStyle = activeEvent.counterStyle || 'default';
+
   return (
     <View style={styles.container}>
 
@@ -108,7 +202,7 @@ export default function WidgetDisplay({
       {/* Compteur */}
       <View style={styles.counterBlock}>
 
-        {/* Nom de l'événement — badge en évidence au-dessus du chiffre */}
+        {/* Nom de l'événement */}
         {(activeEvent.eventName || activeEvent.theme) && (
           <View style={styles.eventNameBadge}>
             <Text
@@ -120,18 +214,25 @@ export default function WidgetDisplay({
           </View>
         )}
 
-        <Text style={[styles.daysNumber, {
-          fontFamily: currentFont.numberStyle.fontFamily,
-        }]}>
-          {daysLeft}
-        </Text>
-
-        <Text style={[styles.daysLabel, {
-          fontFamily: currentFont.labelStyle.fontFamily,
-          letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
-        }]}>
-          Jours restants
-        </Text>
+        {timeLeft?.isPrecise ? (
+          <PreciseCounter
+            timeLeft={timeLeft}
+            currentFont={currentFont}
+            counterStyle={counterStyle}
+          />
+        ) : (
+          <>
+            <Text style={[styles.daysNumber, { fontFamily: currentFont.numberStyle.fontFamily }]}>
+              {daysLeft}
+            </Text>
+            <Text style={[styles.daysLabel, {
+              fontFamily: currentFont.labelStyle.fontFamily,
+              letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
+            }]}>
+              Jours restants
+            </Text>
+          </>
+        )}
 
       </View>
 
@@ -268,6 +369,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textAlign: 'center',
   },
+
+  // --- Compteur normal ---
   daysNumber: {
     fontSize: 96,
     color: '#fff',
@@ -282,6 +385,72 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     marginTop: 2,
   },
+  daysLabelGlass: {
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 6,
+  },
+
+  // --- Compteur précis wrapper ---
+  preciseWrapper: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  preciseWrapperGlass: {
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 28,
+    paddingHorizontal: 22,
+    paddingVertical: 16,
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+  },
+
+  // --- Compteur précis contenu ---
+  preciseBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  preciseCell: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  preciseNumber: {
+    fontSize: 56,
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+    lineHeight: 60,
+  },
+  preciseNumberGlass: {
+    textShadowColor: 'rgba(255,255,255,0.15)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
+  },
+  preciseUnit: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.55)',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 6,
+  },
+  preciseUnitGlass: {
+    color: 'rgba(255,255,255,0.75)',
+  },
+  preciseSep: {
+    fontSize: 22,
+    color: 'rgba(255,255,255,0.2)',
+    marginBottom: 8,
+  },
+  preciseSepGlass: {
+    color: 'rgba(255,255,255,0.35)',
+  },
+
+  // --- Citation ---
   quoteBox: {
     minHeight: 100,
     backgroundColor: 'rgba(0,0,0,0.2)',
@@ -333,6 +502,8 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     color: 'rgba(255,255,255,0.45)',
   },
+
+  // --- Partager ---
   shareBlock: {
     gap: 8,
   },
