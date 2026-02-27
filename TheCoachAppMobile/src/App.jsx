@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Animated, ImageBackground, TouchableOpacity, Text,
-  ActivityIndicator, Linking, StyleSheet, Dimensions,
+  ActivityIndicator, Linking, StyleSheet, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -36,13 +36,11 @@ import WidgetSettings from './components/widget/WidgetSettings';
 import { FONTS } from './constants/fonts';
 import { calcDaysLeft, DEFAULT_EVENT } from './lib/utils';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 48;
-const CARD_HEIGHT = Math.min(CARD_WIDTH * 1.618, SCREEN_HEIGHT * 0.87);
-
 export default function App() {
   const shareCardRef = useRef(null);
   const contentOpacity = useRef(new Animated.Value(0)).current;
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = Math.min(screenWidth - 48, 420);
 
   // --- Chargement des polices ---
   const [fontsLoaded] = useFonts({
@@ -187,7 +185,7 @@ export default function App() {
 
           <View style={styles.outer}>
             <View
-              style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
+              style={[styles.card, { width: cardWidth }]}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -260,7 +258,7 @@ export default function App() {
 
               {/* Contenu principal avec fondu */}
               <Animated.View
-                style={[StyleSheet.absoluteFillObject, { opacity: contentOpacity }]}
+                style={{ opacity: contentOpacity }}
                 pointerEvents={contentPointerEvents}
               >
                 {!isSettingsOpen ? (
@@ -324,6 +322,8 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 48,
     overflow: 'hidden',
+    maxWidth: 420,
+    minHeight: 480,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
     shadowColor: '#000',
