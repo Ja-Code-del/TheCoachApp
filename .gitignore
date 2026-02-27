@@ -1,2 +1,4 @@
 mon-app/.env
 .DS_Store
+/TheCoachAppMobile
+.claude/worktrees/jolly-solomon/
