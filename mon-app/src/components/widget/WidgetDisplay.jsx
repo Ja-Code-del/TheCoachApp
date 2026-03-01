@@ -34,16 +34,16 @@ export default function WidgetDisplay({
       </div>
 
       {/* Chiffre */}
-      <div className="flex flex-col items-center flex-shrink-0">
+      <div className="w-full flex flex-col items-center flex-shrink-0 bg-white/5 backdrop-blur-2xl rounded-[2rem] px-6 pt-5 pb-4 border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_8px_32px_rgba(0,0,0,0.15)]">
         <span className="text-8xl drop-shadow-2xl" style={currentFont.numberStyle}>{daysLeft}</span>
-        <span className="text-xs uppercase tracking-[0.5em] opacity-50 mt-2" style={currentFont.labelStyle}>Jours restants</span>
+        <span className="text-xs uppercase tracking-[0.5em] opacity-60 mt-2" style={currentFont.labelStyle}>Jours restants</span>
         {(activeEvent.eventName || activeEvent.theme) && (
           <span className="mt-1 text-xs opacity-40 italic">— {activeEvent.eventName || activeEvent.theme}</span>
         )}
       </div>
 
       {/* Citation */}
-      <div className="w-full bg-black/20 backdrop-blur-md px-5 py-4 rounded-[2rem] border border-white/10 shadow-inner flex-1 min-h-0 flex flex-col">
+      <div className="w-full bg-white/5 backdrop-blur-2xl px-5 py-4 rounded-[2rem] border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_8px_32px_rgba(0,0,0,0.2)] flex-1 min-h-0 flex flex-col">
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
           {isLoadingQuote ? (
             <div className="flex items-center justify-center gap-2 opacity-50 h-full">
@@ -73,9 +73,9 @@ export default function WidgetDisplay({
       {/* Partager */}
       <div className="w-full flex flex-col items-center gap-2 flex-shrink-0">
         <button title="Partager le moment" onClick={onShare} disabled={isSharing}
-          className="w-full py-3 bg-white text-gray-900 font-bold rounded-2xl flex items-center justify-center gap-3 hover:scale-105 transition shadow-xl disabled:opacity-60 disabled:cursor-not-allowed">
+          className="w-full py-3 bg-white/15 backdrop-blur-2xl text-white font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-white/25 hover:scale-105 transition shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.2)] border border-white/30 disabled:opacity-60 disabled:cursor-not-allowed">
           {isSharing
-            ? <><Spinner dark />Capture en cours...</>
+            ? <><Spinner />Capture en cours...</>
             : <><FontAwesomeIcon icon={faShareNodes} /> Partager le moment</>}
         </button>
         {shareError && <p className="text-[10px] text-red-300 opacity-80">{shareError}</p>}

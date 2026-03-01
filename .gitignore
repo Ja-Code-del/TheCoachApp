@@ -2,3 +2,5 @@ mon-app/.env
 .DS_Store
 .claude/worktrees/jolly-solomon/
 TheCoachAppMobile/.env
+/mon-app
+mon-app/src/components/widget/WidgetDisplay.jsx
