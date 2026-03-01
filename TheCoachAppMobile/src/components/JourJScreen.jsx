@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import ConfettiAnimation from './ConfettiAnimation';
+import { t } from '../lib/i18n';
 
 export default function JourJScreen({ eventName, theme, onShare, isSharing }) {
   const starScale = useRef(new Animated.Value(0.8)).current;
@@ -59,7 +60,7 @@ export default function JourJScreen({ eventName, theme, onShare, isSharing }) {
         <View style={styles.topBlock}>
           <View style={styles.topBadge}>
             <Text style={[styles.topLabel, { fontFamily: 'Inter_700Bold' }]}>
-              C'est le grand jour
+              {t('jour_j_title')}
             </Text>
           </View>
         </View>
@@ -76,7 +77,7 @@ export default function JourJScreen({ eventName, theme, onShare, isSharing }) {
           </Animated.Text>
 
           <Text style={[styles.jourJText, { fontFamily: 'Inter_900Black' }]}>
-            Jour J
+            {t('jour_j_heading')}
           </Text>
 
           {(eventName || theme) && (
@@ -99,14 +100,14 @@ export default function JourJScreen({ eventName, theme, onShare, isSharing }) {
             <>
               <ActivityIndicator size="small" color="#374151" />
               <Text style={[styles.buttonText, { fontFamily: 'Inter_700Bold' }]}>
-                Capture en cours...
+                {t('sharing')}
               </Text>
             </>
           ) : (
             <>
               <Feather name="share" size={16} color="#111" />
               <Text style={[styles.buttonText, { fontFamily: 'Inter_700Bold' }]}>
-                Immortaliser ce moment
+                {t('jour_j_immortalize')}
               </Text>
             </>
           )}

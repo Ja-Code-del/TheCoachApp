@@ -42,6 +42,7 @@ import WidgetDisplay from './components/widget/WidgetDisplay';
 import WidgetSettings from './components/widget/WidgetSettings';
 import { FONTS } from './constants/fonts';
 import { calcDaysLeft, calcTimeLeft, isMemoir, DEFAULT_EVENT } from './lib/utils';
+import { t } from './lib/i18n';
 
 // --- TOGGLE MODE ---
 function ModeToggle({ mode, onSwitch, light }) {
@@ -76,12 +77,12 @@ function ModeToggle({ mode, onSwitch, light }) {
       ]} />
       <TouchableOpacity style={toggleStyles.tab} onPress={() => onSwitch('countdown')} activeOpacity={0.7}>
         <Text style={[toggleStyles.label, { color: mode === 'countdown' ? labelActiveColor : labelColor }]}>
-          Événements
+          {t('mode_countdown')}
         </Text>
       </TouchableOpacity>
       <TouchableOpacity style={toggleStyles.tab} onPress={() => onSwitch('memoir')} activeOpacity={0.7}>
         <Text style={[toggleStyles.label, { color: mode === 'memoir' ? labelActiveColor : labelColor }]}>
-          Souvenirs
+          {t('mode_memoir')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -284,12 +285,12 @@ export default function App() {
   const handleCloseSettings = () => {
     if (isNewEvent) {
       Alert.alert(
-        'Abandonner la création ?',
-        'Cet événement ne sera pas sauvegardé.',
+        t('settings_abandon_title'),
+        t('settings_abandon_message'),
         [
-          { text: 'Continuer la création', style: 'cancel' },
+          { text: t('settings_abandon_continue'), style: 'cancel' },
           {
-            text: 'Abandonner',
+            text: t('settings_abandon_confirm'),
             style: 'destructive',
             onPress: () => {
               setIsNewEvent(false);
@@ -332,12 +333,12 @@ export default function App() {
   const handleDeleteMemoir = () => {
     if (!activeMemoirEvent) return;
     Alert.alert(
-      'Supprimer ce souvenir ?',
-      'L\'événement et son souvenir seront supprimés définitivement.',
+      t('memoir_delete_title'),
+      t('memoir_delete_message'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t('delete'),
           style: 'destructive',
           onPress: () => {
             // Pointer activeIndex sur l'event concerné avant delete
@@ -509,7 +510,7 @@ export default function App() {
                 {isLoadingImage && !isFirstLaunch && !isJourJ && (
                   <View style={styles.loadingImageBadge} pointerEvents="none">
                     <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
-                    <Text style={styles.loadingImageText}>Nouvelle image…</Text>
+                    <Text style={styles.loadingImageText}>{t('image_loading')}</Text>
                   </View>
                 )}
 
@@ -521,7 +522,7 @@ export default function App() {
                     )}
                   >
                     <Text style={styles.creditText}>
-                      📷 {activeEvent.photographer.name} / Unsplash
+                      {t('photo_credit', { name: activeEvent.photographer.name })}
                     </Text>
                   </TouchableOpacity>
                 )}

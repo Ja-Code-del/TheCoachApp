@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { fetchAIQuote, fetchUnsplashImage } from '../lib/api';
 import { calcDaysLeft } from '../lib/utils';
+import { currentLocale } from '../lib/i18n';
 
 export function useMediaGeneration(activeEvent, updateEventById) {
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
@@ -19,7 +20,7 @@ export function useMediaGeneration(activeEvent, updateEventById) {
     setQuoteError(null);
     try {
       const days = calcDaysLeft(evt.targetDate);
-      const q = await fetchAIQuote(evt.theme, days);
+      const q = await fetchAIQuote(evt.theme, days, currentLocale);
       updateEventById(eventId, { quote: q });
     } catch (e) {
       console.error('Erreur citation:', e);

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { calcTimeAgo } from '../lib/utils';
+import { t } from '../lib/i18n';
 
 const PHOTO_SIZE = 80;
 
@@ -71,7 +72,7 @@ export default function MemoirScreen({
   const c = isDark ? DARK : LIGHT;
   const memoir = event.memoir || { note: '', photos: [], createdAt: null };
   const timeAgo = calcTimeAgo(event.targetDate);
-  const title = event.eventName || event.theme || 'Souvenir';
+  const title = event.eventName || event.theme || t('memoir_default_title');
   const hasPhotos = memoir.photos.length > 0;
   const hasNote = memoir.note?.trim().length > 0;
   const hasContent = hasPhotos || hasNote;
@@ -126,7 +127,7 @@ export default function MemoirScreen({
             activeOpacity={0.7}
           >
             <Feather name="camera" size={22} color={c.placeholderIcon} />
-            <Text style={[styles.placeholderText, { color: c.placeholderText }]}>Ajouter des photos</Text>
+            <Text style={[styles.placeholderText, { color: c.placeholderText }]}>{t('memoir_add_photos')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -140,7 +141,7 @@ export default function MemoirScreen({
         ) : (
           <TouchableOpacity style={styles.notePlaceholder} onPress={onEdit} activeOpacity={0.7}>
             <Feather name="edit-3" size={16} color={c.placeholderIcon} />
-            <Text style={[styles.placeholderText, { color: c.placeholderText }]}>Écrire une note…</Text>
+            <Text style={[styles.placeholderText, { color: c.placeholderText }]}>{t('memoir_write_note')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -153,7 +154,7 @@ export default function MemoirScreen({
           activeOpacity={0.7}
         >
           <Feather name="edit-2" size={15} color={c.editIcon} />
-          <Text style={[styles.editBtnText, { color: c.editText }]}>Éditer</Text>
+          <Text style={[styles.editBtnText, { color: c.editText }]}>{t('edit')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -164,7 +165,7 @@ export default function MemoirScreen({
         >
           <Feather name="share" size={15} color={c.shareIcon} />
           <Text style={[styles.shareBtnText, { color: c.shareText }]}>
-            {isSharing ? 'Capture…' : 'Partager'}
+            {isSharing ? t('sharing') : t('share')}
           </Text>
         </TouchableOpacity>
 

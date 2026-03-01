@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { t } from '../lib/i18n';
 
 export default function MemoirWelcomeScreen({ isDark }) {
   const c = isDark ? DARK : LIGHT;
@@ -10,10 +11,10 @@ export default function MemoirWelcomeScreen({ isDark }) {
         <FontAwesome name="cloud" size={32} color={c.iconColor} />
       </View>
 
-      <Text style={[styles.title, { color: c.title }]}>Vos Souvenirs</Text>
+      <Text style={[styles.title, { color: c.title }]}>{t('memoir_welcome_title')}</Text>
 
       <Text style={[styles.sub, { color: c.sub }]}>
-        Chaque événement passé devient un souvenir précieux — avec vos photos et vos notes.
+        {t('memoir_welcome_subtitle')}
       </Text>
 
       <View style={[styles.divider, { backgroundColor: c.divider }]} />
@@ -21,13 +22,13 @@ export default function MemoirWelcomeScreen({ isDark }) {
       <View style={styles.hintRow}>
         <Text style={[styles.hintDot, { color: c.hintDot }]}>●</Text>
         <Text style={[styles.hint, { color: c.hint }]}>
-          Le lendemain du Jour J, l'événement bascule automatiquement ici.
+          {t('memoir_welcome_hint1')}
         </Text>
       </View>
       <View style={styles.hintRow}>
         <Text style={[styles.hintDot, { color: c.hintDot }]}>●</Text>
         <Text style={[styles.hint, { color: c.hint }]}>
-          Ajoutez des photos et une note pour immortaliser le moment.
+          {t('memoir_welcome_hint2')}
         </Text>
       </View>
     </View>

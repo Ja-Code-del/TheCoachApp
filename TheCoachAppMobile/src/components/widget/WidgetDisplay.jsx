@@ -4,6 +4,7 @@ import {
   ActivityIndicator, StyleSheet, Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { t } from '../../lib/i18n';
 
 // --- TOOLTIP GLASSMORPHISM ---
 function Tooltip({ label, children }) {
@@ -149,7 +150,7 @@ function PreciseCounter({ timeLeft, currentFont, counterStyle }) {
           letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
         },
       ]}>
-        Restants
+        {t('remaining')}
       </Text>
     </Animated.View>
   );
@@ -169,14 +170,14 @@ export default function WidgetDisplay({
 
       {/* Header */}
       <View style={styles.header}>
-        <Tooltip label="Ajouter un événement">
+        <Tooltip label={t('add_event')}>
           <TouchableOpacity style={styles.iconBtn} onPress={onAddEvent} activeOpacity={0.7}>
             <Feather name="plus" size={18} color="rgba(255,255,255,0.8)" />
           </TouchableOpacity>
         </Tooltip>
 
         <View style={styles.headerRight}>
-          <Tooltip label="Changer l'image">
+          <Tooltip label={t('refresh_image')}>
             <TouchableOpacity
               style={[styles.iconBtn, (isLoadingImage || !activeEvent.theme) && styles.iconBtnDisabled]}
               onPress={onRefreshImage}
@@ -191,7 +192,7 @@ export default function WidgetDisplay({
             </TouchableOpacity>
           </Tooltip>
 
-          <Tooltip label="Paramètres">
+          <Tooltip label={t('settings_title')}>
             <TouchableOpacity style={styles.iconBtn} onPress={onOpenSettings} activeOpacity={0.7}>
               <Feather name="settings" size={18} color="rgba(255,255,255,0.8)" />
             </TouchableOpacity>
@@ -229,7 +230,7 @@ export default function WidgetDisplay({
               fontFamily: currentFont.labelStyle.fontFamily,
               letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
             }]}>
-              Jours restants
+              {t(daysLeft === 1 ? 'day_remaining' : 'days_remaining')}
             </Text>
           </>
         )}
@@ -243,7 +244,7 @@ export default function WidgetDisplay({
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />
               <Text style={[styles.loadingText, { fontFamily: 'Inter_300Light' }]}>
-                Génération en cours...
+                {t('generating')}
               </Text>
             </View>
           ) : quoteError ? (
@@ -278,7 +279,7 @@ export default function WidgetDisplay({
             style={isLoadingQuote ? { opacity: 0.3 } : {}}
           />
           <Text style={[styles.refreshQuoteText, isLoadingQuote && { opacity: 0.3 }, { fontFamily: 'Inter_700Bold' }]}>
-            Nouvelle citation
+            {t('refresh_quote')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -295,14 +296,14 @@ export default function WidgetDisplay({
             <>
               <ActivityIndicator size="small" color="#374151" />
               <Text style={[styles.shareBtnText, { fontFamily: 'Inter_700Bold' }]}>
-                Capture en cours...
+                {t('sharing')}
               </Text>
             </>
           ) : (
             <>
               <Feather name="share" size={16} color="#111" />
               <Text style={[styles.shareBtnText, { fontFamily: 'Inter_700Bold' }]}>
-                Partager le moment
+                {t('share_moment')}
               </Text>
             </>
           )}
@@ -312,7 +313,7 @@ export default function WidgetDisplay({
         )}
         {saveSuccess && (
           <Text style={[styles.saveSuccess, { fontFamily: 'Inter_700Bold' }]}>
-            ✓ Image sauvegardée dans Photos
+            {t('save_success')}
           </Text>
         )}
       </View>

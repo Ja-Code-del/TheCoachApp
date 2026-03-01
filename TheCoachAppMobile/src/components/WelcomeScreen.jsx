@@ -5,23 +5,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-
-const STEPS = [
-  {
-    icon: 'target',
-    text: 'Choisis un thème et une date cible',
-  },
-  {
-    icon: 'zap',
-    text: 'Une citation et une image sont générées pour toi',
-  },
-  {
-    icon: 'send',
-    text: 'Partage le moment avec tes proches',
-  },
-];
+import { t } from '../lib/i18n';
 
 export default function WelcomeScreen({ onStart, visible }) {
+  const STEPS = [
+    { icon: 'target', text: t('welcome_step1') },
+    { icon: 'zap',    text: t('welcome_step2') },
+    { icon: 'send',   text: t('welcome_step3') },
+  ];
   const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
 
   useEffect(() => {
@@ -53,18 +44,17 @@ export default function WelcomeScreen({ onStart, visible }) {
         {/* Titre */}
         <View style={styles.titleBlock}>
           <Text style={[styles.title, { fontFamily: 'Inter_900Black' }]}>
-            Bienvenue
+            {t('welcome_badge')}
           </Text>
           <Text style={[styles.subtitle, { fontFamily: 'Inter_300Light' }]}>
-            Ton compte à rebours personnel,{'\n'}
-            avec des citations qui t'inspirent chaque jour.
+            {t('welcome_subtitle')}
           </Text>
         </View>
 
         {/* Étapes */}
         <View style={styles.stepsBox}>
           <Text style={[styles.stepsLabel, { fontFamily: 'Inter_700Bold' }]}>
-            Comment ça marche
+            {t('welcome_how_label')}
           </Text>
           {STEPS.map(({ icon, text }) => (
             <View key={icon} style={styles.step}>
@@ -85,7 +75,7 @@ export default function WelcomeScreen({ onStart, visible }) {
           activeOpacity={0.85}
         >
           <Text style={[styles.buttonText, { fontFamily: 'Inter_700Bold' }]}>
-            Commencer
+            {t('welcome_cta')}
           </Text>
           <Feather name="arrow-right" size={16} color="#111" />
         </TouchableOpacity>

@@ -7,6 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { FONTS } from '../../constants/fonts';
 import { requestNotificationPermission } from '../../hooks/useNotifications';
+import { t } from '../../lib/i18n';
 
 // ─── HELPERS DATE ──────────────────────────────────────────────────────────
 const getTomorrowDate = () => {
@@ -40,8 +41,8 @@ const generateReminderId = () => `rem_${Date.now()}_${Math.random().toString(36)
 
 // ─── COUNTER STYLES ────────────────────────────────────────────────────────
 const COUNTER_STYLES = [
-  { id: 'default', label: 'Standard', description: 'Chiffres lumineux sur fond transparent', preview: '6j · 14h · 32min' },
-  { id: 'glass',   label: 'Verre',    description: 'Effet glassmorphism — inspiré Apple',    preview: '6j · 14h · 32min' },
+  { id: 'default', labelKey: 'settings_counter_standard', descKey: 'settings_counter_standard_desc', preview: '6j · 14h · 32min' },
+  { id: 'glass',   labelKey: 'settings_counter_glass',    descKey: 'settings_counter_glass_desc',    preview: '6j · 14h · 32min' },
 ];
 
 const MAX_REMINDERS = 3;
@@ -98,9 +99,9 @@ function ReminderRow({ reminder, onUpdate, onDelete, targetDate }) {
           activeOpacity={0.7}
         >
           <Text style={[remSt.datetimeText, isPast && remSt.datetimeTextPast]}>
-            {reminder.datetime ? formatDatetimeFR(reminder.datetime) : 'Choisir une date et heure'}
+            {reminder.datetime ? formatDatetimeFR(reminder.datetime) : t('reminders_choose_datetime')}
           </Text>
-          {isPast && <Text style={remSt.pastBadge}>Passé</Text>}
+          {isPast && <Text style={remSt.pastBadge}>{t('reminders_past_badge')}</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity style={remSt.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
@@ -120,7 +121,7 @@ function ReminderRow({ reminder, onUpdate, onDelete, targetDate }) {
           color="rgba(255,255,255,0.3)"
         />
         <Text style={remSt.msgToggleText}>
-          {editingMsg ? 'Masquer' : reminder.message ? 'Message personnalisé ✓' : 'Ajouter un message'}
+          {editingMsg ? t('reminders_message_hide') : reminder.message ? t('reminders_message_has') : t('reminders_message_add')}
         </Text>
       </TouchableOpacity>
 
@@ -129,7 +130,7 @@ function ReminderRow({ reminder, onUpdate, onDelete, targetDate }) {
           style={remSt.msgInput}
           value={reminder.message || ''}
           onChangeText={v => onUpdate({ message: v })}
-          placeholder="Laisse vide pour le message automatique…"
+          placeholder={t('reminders_message_placeholder')}
           placeholderTextColor="rgba(255,255,255,0.2)"
           maxLength={100}
         />
@@ -265,8 +266,8 @@ export default function WidgetSettings({
     const granted = await requestNotificationPermission();
     if (!granted) {
       Alert.alert(
-        'Notifications désactivées',
-        'Active les notifications pour cet app dans les Réglages de ton téléphone.',
+        t('reminders_permission_title'),
+        t('reminders_permission_message'),
         [{ text: 'OK' }]
       );
       return;
@@ -298,7 +299,7 @@ export default function WidgetSettings({
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Réglages</Text>
+        <Text style={styles.title}>{t('settings_title')}</Text>
         <View style={styles.headerActions}>
           {eventsCount > 1 && (
             !confirmDelete ? (
@@ -308,10 +309,10 @@ export default function WidgetSettings({
             ) : (
               <View style={styles.confirmRow}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setConfirmDelete(false)}>
-                  <Text style={[styles.cancelBtnText, { fontFamily: 'Inter_700Bold' }]}>Annuler</Text>
+                  <Text style={[styles.cancelBtnText, { fontFamily: 'Inter_700Bold' }]}>{t('cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-                  <Text style={[styles.deleteBtnText, { fontFamily: 'Inter_700Bold' }]}>Supprimer</Text>
+                  <Text style={[styles.deleteBtnText, { fontFamily: 'Inter_700Bold' }]}>{t('settings_delete_confirm')}</Text>
                 </TouchableOpacity>
               </View>
             )
@@ -332,34 +333,34 @@ export default function WidgetSettings({
 
         {/* Nom */}
         <View style={styles.field}>
-          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>Nom de l'événement</Text>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('settings_event_name')}</Text>
           <TextInput
             style={[styles.input, { fontFamily: 'Inter_300Light' }]}
             value={activeEvent.eventName}
             onChangeText={v => onUpdateEvent({ eventName: v })}
-            placeholder="ex: Mon mariage, Mon marathon..."
+            placeholder={t('settings_event_name_placeholder')}
             placeholderTextColor="rgba(255,255,255,0.3)"
           />
         </View>
 
         {/* Thème IA */}
         <View style={styles.field}>
-          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>Thème (pour l'IA)</Text>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('settings_theme')}</Text>
           <TextInput
             style={[styles.input, { fontFamily: 'Inter_300Light' }]}
             value={activeEvent.theme}
             onChangeText={v => onUpdateEvent({ theme: v })}
-            placeholder="ex: mariage élégant, marathon sportif..."
+            placeholder={t('settings_theme_placeholder')}
             placeholderTextColor="rgba(255,255,255,0.3)"
           />
           <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
-            Utilisé pour générer l'image et la citation.
+            {t('settings_theme_hint')}
           </Text>
         </View>
 
         {/* Date */}
         <View style={styles.field}>
-          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>Date de l'événement</Text>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('settings_date')}</Text>
           {Platform.OS === 'ios' && (
             <DateTimePicker
               value={selectedDate}
@@ -377,7 +378,7 @@ export default function WidgetSettings({
               <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
                 <Feather name="calendar" size={15} color="rgba(255,255,255,0.7)" />
                 <Text style={[styles.dateBtnText, { fontFamily: 'Inter_300Light' }]}>
-                  {activeEvent.targetDate ? formatDateFR(activeEvent.targetDate) : 'Choisir une date'}
+                  {activeEvent.targetDate ? formatDateFR(activeEvent.targetDate) : t('settings_date_placeholder')}
                 </Text>
               </TouchableOpacity>
               {showDatePicker && (
@@ -401,7 +402,7 @@ export default function WidgetSettings({
         {/* ── RAPPELS ── */}
         <View style={styles.field}>
           <View style={styles.labelRow}>
-            <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>Rappels</Text>
+            <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('reminders_title')}</Text>
             <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
               {reminders.length}/{MAX_REMINDERS}
             </Text>
@@ -409,7 +410,7 @@ export default function WidgetSettings({
 
           {reminders.length === 0 && (
             <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
-              Aucun rappel configuré.
+              {t('reminders_none')}
             </Text>
           )}
 
@@ -427,7 +428,7 @@ export default function WidgetSettings({
             <TouchableOpacity style={styles.addReminderBtn} onPress={handleAddReminder} activeOpacity={0.7}>
               <Feather name="plus" size={14} color="rgba(255,255,255,0.6)" />
               <Text style={[styles.addReminderText, { fontFamily: 'Inter_700Bold' }]}>
-                Ajouter un rappel
+                {t('reminders_add')}
               </Text>
             </TouchableOpacity>
           )}
@@ -435,7 +436,7 @@ export default function WidgetSettings({
 
         {/* Police */}
         <View style={styles.field}>
-          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>Police</Text>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('settings_font')}</Text>
           <View style={styles.fontList}>
             {FONTS.map(font => (
               <TouchableOpacity
@@ -456,9 +457,9 @@ export default function WidgetSettings({
 
         {/* Style compteur */}
         <View style={styles.field}>
-          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>Style compteur précis</Text>
+          <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('settings_counter_style')}</Text>
           <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
-            Actif automatiquement à moins de 7 jours de l'événement.
+            {t('settings_counter_style_hint')}
           </Text>
           <View style={styles.counterStyleList}>
             {COUNTER_STYLES.map(cs => {
@@ -482,14 +483,14 @@ export default function WidgetSettings({
                   </View>
                   <View style={styles.counterStyleInfo}>
                     <View style={styles.counterStyleRow}>
-                      <Text style={[styles.counterStyleLabel, { fontFamily: 'Inter_700Bold' }]}>{cs.label}</Text>
+                      <Text style={[styles.counterStyleLabel, { fontFamily: 'Inter_700Bold' }]}>{t(cs.labelKey)}</Text>
                       {isActive && (
                         <View style={styles.activeBadge}>
-                          <Text style={[styles.activeBadgeText, { fontFamily: 'Inter_700Bold' }]}>Actif</Text>
+                          <Text style={[styles.activeBadgeText, { fontFamily: 'Inter_700Bold' }]}>{t('settings_counter_active_badge')}</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={[styles.counterStyleDesc, { fontFamily: 'Inter_300Light' }]}>{cs.description}</Text>
+                    <Text style={[styles.counterStyleDesc, { fontFamily: 'Inter_300Light' }]}>{t(cs.descKey)}</Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -507,10 +508,10 @@ export default function WidgetSettings({
           {isLoading ? (
             <>
               <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
-              <Text style={[styles.saveBtnText, { fontFamily: 'Inter_700Bold' }]}>Chargement...</Text>
+              <Text style={[styles.saveBtnText, { fontFamily: 'Inter_700Bold' }]}>{t('loading')}</Text>
             </>
           ) : (
-            <Text style={[styles.saveBtnText, { fontFamily: 'Inter_700Bold' }]}>Enregistrer</Text>
+            <Text style={[styles.saveBtnText, { fontFamily: 'Inter_700Bold' }]}>{t('save')}</Text>
           )}
         </TouchableOpacity>
 

@@ -82,6 +82,11 @@ export function isMemoir(event) {
 }
 
 // "Il y a 2 mois", "Il y a 3 jours", "Il y a 1 an"
+// Importer t depuis i18n partout où calcTimeAgo est appelé
+// OU passer t en paramètre pour garder utils.js sans dépendance
+
+import { t } from '../lib/i18n';
+
 export function calcTimeAgo(targetDate) {
   if (!targetDate) return '';
   const parts = targetDate.split('-').map(Number);
@@ -92,17 +97,17 @@ export function calcTimeAgo(targetDate) {
   now.setHours(0, 0, 0, 0);
   const diffDays = Math.floor((now - past) / 86400000);
 
-  if (diffDays <= 0) return "Aujourd'hui";
-  if (diffDays === 1) return 'Il y a 1 jour';
-  if (diffDays < 7) return `Il y a ${diffDays} jours`;
+  if (diffDays <= 0) return t('date_today');
+  if (diffDays === 1) return t('date_yesterday');
+  if (diffDays < 7)  return t('date_days_ago',  { count: diffDays });
   if (diffDays < 30) {
     const w = Math.floor(diffDays / 7);
-    return w === 1 ? 'Il y a 1 semaine' : `Il y a ${w} semaines`;
+    return w === 1 ? t('date_week_ago') : t('date_weeks_ago', { count: w });
   }
   if (diffDays < 365) {
     const mo = Math.floor(diffDays / 30);
-    return mo === 1 ? 'Il y a 1 mois' : `Il y a ${mo} mois`;
+    return mo === 1 ? t('date_month_ago') : t('date_months_ago', { count: mo });
   }
   const yr = Math.floor(diffDays / 365);
-  return yr === 1 ? 'Il y a 1 an' : `Il y a ${yr} ans`;
+  return yr === 1 ? t('date_year_ago') : t('date_years_ago', { count: yr });
 }

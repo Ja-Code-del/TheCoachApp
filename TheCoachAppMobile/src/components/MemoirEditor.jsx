@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { t } from '../lib/i18n';
 
 const MAX_PHOTOS = 6;
 const MAX_NOTE = 500;
@@ -63,7 +64,7 @@ export default function MemoirEditor({ event, onSave, onClose, isDark }) {
     if (photos.length >= MAX_PHOTOS) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission requise', "Autorise l'accès à ta galerie dans les Réglages pour ajouter des photos.");
+      Alert.alert(t('memoir_permission_title'), t('memoir_permission_message'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -80,9 +81,9 @@ export default function MemoirEditor({ event, onSave, onClose, isDark }) {
   };
 
   const handleRemovePhoto = (index) => {
-    Alert.alert('Supprimer la photo ?', '', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => setPhotos(prev => prev.filter((_, i) => i !== index)) },
+    Alert.alert(t('memoir_photos_delete_title'), '', [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: () => setPhotos(prev => prev.filter((_, i) => i !== index)) },
     ]);
   };
 
@@ -96,7 +97,7 @@ export default function MemoirEditor({ event, onSave, onClose, isDark }) {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: c.title }]}>Mon souvenir</Text>
+        <Text style={[styles.title, { color: c.title }]}>{t('memoir_editor_title')}</Text>
         <TouchableOpacity
           style={[styles.closeBtn, { backgroundColor: c.closeBg, borderColor: c.closeBorder }]}
           onPress={onClose}
@@ -110,7 +111,7 @@ export default function MemoirEditor({ event, onSave, onClose, isDark }) {
 
         {/* Photos */}
         <View style={styles.field}>
-          <Text style={[styles.label, { color: c.label }]}>Photos ({photos.length}/{MAX_PHOTOS})</Text>
+          <Text style={[styles.label, { color: c.label }]}>{t('memoir_photos_label')} ({photos.length}/{MAX_PHOTOS})</Text>
           <View style={styles.photosGrid}>
             {photos.map((uri, i) => (
               <TouchableOpacity key={i} onLongPress={() => handleRemovePhoto(i)} activeOpacity={0.85} style={styles.photoWrapper}>
@@ -127,24 +128,24 @@ export default function MemoirEditor({ event, onSave, onClose, isDark }) {
                 activeOpacity={0.7}
               >
                 <Feather name="plus" size={22} color={c.photoAddIcon} />
-                <Text style={[styles.addPhotoText, { color: c.photoAddText }]}>Ajouter</Text>
+                <Text style={[styles.addPhotoText, { color: c.photoAddText }]}>{t('memoir_photos_add')}</Text>
               </TouchableOpacity>
             )}
           </View>
-          <Text style={[styles.hint, { color: c.hint }]}>Appuie longuement sur une photo pour la supprimer.</Text>
+          <Text style={[styles.hint, { color: c.hint }]}>{t('memoir_photos_hint')}</Text>
         </View>
 
         {/* Note */}
         <View style={styles.field}>
           <View style={styles.labelRow}>
-            <Text style={[styles.label, { color: c.label }]}>Note</Text>
+            <Text style={[styles.label, { color: c.label }]}>{t('memoir_note_label')}</Text>
             <Text style={[styles.charCount, { color: c.charCount }]}>{note.length}/{MAX_NOTE}</Text>
           </View>
           <TextInput
             style={[styles.textarea, { backgroundColor: c.textareaBg, borderColor: c.textareaBorder, color: c.textareaText }]}
             value={note}
             onChangeText={v => setNote(v.slice(0, MAX_NOTE))}
-            placeholder="Raconte ce que tu as vécu ce jour-là…"
+            placeholder={t('memoir_note_placeholder')}
             placeholderTextColor={c.textareaPlaceholder}
             multiline
             numberOfLines={5}
@@ -158,7 +159,7 @@ export default function MemoirEditor({ event, onSave, onClose, isDark }) {
           onPress={handleSave}
           activeOpacity={0.85}
         >
-          <Text style={[styles.saveBtnText, { color: c.saveText }]}>Enregistrer le souvenir</Text>
+          <Text style={[styles.saveBtnText, { color: c.saveText }]}>{t('memoir_save')}</Text>
         </TouchableOpacity>
 
       </ScrollView>
