@@ -200,7 +200,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [timeLeft.isPrecise, activeEvent.targetDate]);
 
-  const daysLeft = timeLeft.days;
+  const daysLeft = calcDaysLeft(activeEvent.targetDate);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 

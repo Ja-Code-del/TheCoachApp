@@ -15,21 +15,23 @@ export const DEFAULT_EVENT = () => ({
   photographer: null,
   memoir: {
     note: '',
-    photos: [],       // URIs locaux expo-image-picker
-    createdAt: null,  // timestamp ISO — null = pas encore souvenir
+    photos: [],
+    createdAt: null,
   },
   reminders: [],
 });
 
+// Jours calendaires restants — de minuit à minuit, sans heure courante
 export function calcDaysLeft(targetDate) {
   if (!targetDate || typeof targetDate !== 'string') return 0;
   const parts = targetDate.split('-').map(Number);
   if (parts.length !== 3 || parts.some(isNaN)) return 0;
   const [y, m, d] = parts;
   const target = new Date(y, m - 1, d);
+  target.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.max(0, Math.ceil((target - today) / (1000 * 60 * 60 * 24)));
+  return Math.max(0, Math.round((target - today) / 86400000));
 }
 
 export function calcTimeLeft(targetDate) {
@@ -38,20 +40,38 @@ export function calcTimeLeft(targetDate) {
   if (parts.length !== 3 || parts.some(isNaN)) return { days: 0, hours: 0, minutes: 0, isPrecise: false };
 
   const [y, m, d] = parts;
-  const target = new Date(y, m - 1, d);
-  target.setHours(0, 0, 0, 0);
-  const now = new Date();
-  const diffMs = target - now;
 
-  if (diffMs <= 0) return { days: 0, hours: 0, minutes: 0, isPrecise: false };
+  // Jours calendaires — comparaison minuit à minuit (pas d'influence de l'heure courante)
+  const targetMidnight = new Date(y, m - 1, d);
+  targetMidnight.setHours(0, 0, 0, 0);
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const days = Math.max(0, Math.round((targetMidnight - todayMidnight) / 86400000));
 
-  const totalMinutes = Math.floor(diffMs / 60000);
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
-  const isPrecise = days < 7;
+  // Event passé
+  if (targetMidnight < todayMidnight) {
+    return { days: 0, hours: 0, minutes: 0, isPrecise: false };
+  }
 
-  return { days, hours, minutes, isPrecise };
+  // Mode précis = Jour J uniquement (days === 0)
+  // Heures/minutes = temps réel jusqu'à fin de journée (23:59:59)
+  if (days === 0) {
+    const endOfDay = new Date(y, m - 1, d);
+    endOfDay.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const diffMs = endOfDay - now;
+    if (diffMs <= 0) return { days: 0, hours: 0, minutes: 0, isPrecise: false };
+    const totalMinutes = Math.floor(diffMs / 60000);
+    return {
+      days: 0,
+      hours: Math.floor(totalMinutes / 60),
+      minutes: totalMinutes % 60,
+      isPrecise: true,
+    };
+  }
+
+  // Mode normal : jours entiers seulement
+  return { days, hours: 0, minutes: 0, isPrecise: false };
 }
 
 // Retourne true si l'event est un souvenir (date strictement passée)
@@ -69,20 +89,20 @@ export function calcTimeAgo(targetDate) {
   const [y, m, d] = parts;
   const past = new Date(y, m - 1, d);
   const now = new Date();
-  const diffMs = now - past;
-  const diffDays = Math.floor(diffMs / 86400000);
+  now.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((now - past) / 86400000);
 
-  if (diffDays === 0) return "Aujourd'hui";
+  if (diffDays <= 0) return "Aujourd'hui";
   if (diffDays === 1) return 'Il y a 1 jour';
   if (diffDays < 7) return `Il y a ${diffDays} jours`;
   if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return weeks === 1 ? 'Il y a 1 semaine' : `Il y a ${weeks} semaines`;
+    const w = Math.floor(diffDays / 7);
+    return w === 1 ? 'Il y a 1 semaine' : `Il y a ${w} semaines`;
   }
   if (diffDays < 365) {
-    const months = Math.floor(diffDays / 30);
-    return months === 1 ? 'Il y a 1 mois' : `Il y a ${months} mois`;
+    const mo = Math.floor(diffDays / 30);
+    return mo === 1 ? 'Il y a 1 mois' : `Il y a ${mo} mois`;
   }
-  const years = Math.floor(diffDays / 365);
-  return years === 1 ? 'Il y a 1 an' : `Il y a ${years} ans`;
+  const yr = Math.floor(diffDays / 365);
+  return yr === 1 ? 'Il y a 1 an' : `Il y a ${yr} ans`;
 }
