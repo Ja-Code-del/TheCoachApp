@@ -43,47 +43,53 @@ import WidgetSettings from './components/widget/WidgetSettings';
 import { FONTS } from './constants/fonts';
 import { calcDaysLeft, calcTimeLeft, isMemoir, DEFAULT_EVENT } from './lib/utils';
 import { t } from './lib/i18n';
+import EventList from './components/widget/EventList';
 
 // --- TOGGLE MODE ---
 function ModeToggle({ mode, onSwitch, light }) {
-  const translateX = useRef(new Animated.Value(mode === 'countdown' ? 0 : 1)).current;
+  // 0 = countdown, 1 = list, 2 = memoir
+  const modeIndex = mode === 'countdown' ? 0 : mode === 'list' ? 1 : 2;
+  const translateX = useRef(new Animated.Value(modeIndex)).current;
 
   useEffect(() => {
     Animated.spring(translateX, {
-      toValue: mode === 'countdown' ? 0 : 1,
+      toValue: modeIndex,
       friction: 8,
       tension: 60,
       useNativeDriver: true,
     }).start();
-  }, [mode]);
+  }, [modeIndex]);
+
+  const TAB_W = 90; // largeur de chaque tab (3 × 90 = 270 + 4px padding = 274px)
 
   const pillTranslate = translateX.interpolate({
-    inputRange: [0, 1],
-    outputRange: [2, 118],
+    inputRange: [0, 1, 2],
+    outputRange: [2, 2 + TAB_W, 2 + TAB_W * 2],
   });
 
-  const wrapperBg   = light ? 'rgba(0,0,0,0.07)'   : 'rgba(0,0,0,0.25)';
-  const wrapperBorder = light ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.12)';
-  const pillBg      = light ? 'rgba(0,0,0,0.09)'   : 'rgba(255,255,255,0.15)';
-  const pillBorder  = light ? 'rgba(0,0,0,0.13)'   : 'rgba(255,255,255,0.25)';
-  const labelColor  = light ? 'rgba(0,0,0,0.38)'   : 'rgba(255,255,255,0.4)';
-  const labelActiveColor = light ? '#1a1a2e' : '#fff';
+  const wrapperBg     = light ? 'rgba(0,0,0,0.07)'   : 'rgba(0,0,0,0.25)';
+  const wrapperBorder = light ? 'rgba(0,0,0,0.10)'   : 'rgba(255,255,255,0.12)';
+  const pillBg        = light ? 'rgba(0,0,0,0.09)'   : 'rgba(255,255,255,0.15)';
+  const pillBorder    = light ? 'rgba(0,0,0,0.13)'   : 'rgba(255,255,255,0.25)';
+  const labelColor    = light ? 'rgba(0,0,0,0.38)'   : 'rgba(255,255,255,0.4)';
+  const labelActive   = light ? '#1a1a2e'             : '#fff';
+
+  const activeColor = (m) => mode === m ? labelActive : labelColor;
 
   return (
     <View style={[toggleStyles.wrapper, { backgroundColor: wrapperBg, borderColor: wrapperBorder }]}>
       <Animated.View style={[
         toggleStyles.pill,
-        { backgroundColor: pillBg, borderColor: pillBorder, transform: [{ translateX: pillTranslate }] },
+        { backgroundColor: pillBg, borderColor: pillBorder, width: TAB_W - 4, transform: [{ translateX: pillTranslate }] },
       ]} />
-      <TouchableOpacity style={toggleStyles.tab} onPress={() => onSwitch('countdown')} activeOpacity={0.7}>
-        <Text style={[toggleStyles.label, { color: mode === 'countdown' ? labelActiveColor : labelColor }]}>
-          {t('mode_countdown')}
-        </Text>
+      <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('countdown')} activeOpacity={0.7}>
+        <Text style={[toggleStyles.label, { color: activeColor('countdown') }]}>Événements</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={toggleStyles.tab} onPress={() => onSwitch('memoir')} activeOpacity={0.7}>
-        <Text style={[toggleStyles.label, { color: mode === 'memoir' ? labelActiveColor : labelColor }]}>
-          {t('mode_memoir')}
-        </Text>
+      <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('list')} activeOpacity={0.7}>
+        <Text style={[toggleStyles.label, { color: activeColor('list') }]}>Liste</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('memoir')} activeOpacity={0.7}>
+        <Text style={[toggleStyles.label, { color: activeColor('memoir') }]}>Souvenirs</Text>
       </TouchableOpacity>
     </View>
   );
@@ -102,19 +108,19 @@ const toggleStyles = StyleSheet.create({
   pill: {
     position: 'absolute',
     top: 2,
-    width: 116,
+    // width définie inline (TAB_W - 4)
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
   },
   tab: {
-    width: 118,
+    // width définie inline
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Inter_700Bold',
   },
 });
@@ -142,7 +148,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isNewEvent, setIsNewEvent] = useState(false);
-  const [mode, setMode] = useState('countdown'); // 'countdown' | 'memoir'
+  const [mode, setMode] = useState('countdown'); // 'countdown' | 'list' | 'memoir'
   const [isMemoirEditing, setIsMemoirEditing] = useState(false);
   const [memoirTheme, setMemoirTheme] = useState('light'); // 'light' | 'dark'
 
@@ -187,19 +193,24 @@ export default function App() {
     [activeEvent.fontId]
   );
 
-  const [timeLeft, setTimeLeft] = useState(() => calcTimeLeft(activeEvent.targetDate));
+  const [timeLeft, setTimeLeft] = useState(
+    () => calcTimeLeft(activeEvent.targetDate, activeEvent.targetTime)
+  );
 
   useEffect(() => {
-    setTimeLeft(calcTimeLeft(activeEvent.targetDate));
-  }, [activeEvent.targetDate]);
+    setTimeLeft(calcTimeLeft(activeEvent.targetDate, activeEvent.targetTime));
+  }, [activeEvent.targetDate, activeEvent.targetTime]);
 
   useEffect(() => {
     if (!timeLeft.isPrecise) return;
+    // Secondes visibles si l'event a une heure exacte → interval 1s
+    // Sinon (Jour J sans heure) → interval 60s suffit
+    const ms = timeLeft.hasTime ? 1000 : 60000;
     const interval = setInterval(() => {
-      setTimeLeft(calcTimeLeft(activeEvent.targetDate));
-    }, 60000);
+      setTimeLeft(calcTimeLeft(activeEvent.targetDate, activeEvent.targetTime));
+    }, ms);
     return () => clearInterval(interval);
-  }, [timeLeft.isPrecise, activeEvent.targetDate]);
+  }, [timeLeft.isPrecise, timeLeft.hasTime, activeEvent.targetDate, activeEvent.targetTime]);
 
   const daysLeft = calcDaysLeft(activeEvent.targetDate);
 
@@ -246,7 +257,7 @@ export default function App() {
 
   // --- Fade carousel ---
   useEffect(() => {
-    const shouldShow = isFirstLaunch === false && !isJourJ && mode === 'countdown';
+    const shouldShow = isFirstLaunch === false && !isJourJ && (mode === 'countdown' || mode === 'list');
     Animated.timing(contentOpacity, {
       toValue: (shouldShow && fadeVisible) ? 1 : 0,
       duration: 300,
@@ -262,7 +273,7 @@ export default function App() {
     if (newMode === 'memoir' && memoirEvents.length > 0) {
       const globalIdx = events.findIndex(e => e.id === memoirEvents[0].id);
       if (globalIdx >= 0) setActiveIndex(globalIdx);
-    } else if (newMode === 'countdown' && countdownEvents.length > 0) {
+    } else if ((newMode === 'countdown' || newMode === 'list') && countdownEvents.length > 0) {
       const globalIdx = events.findIndex(e => e.id === countdownEvents[0].id);
       if (globalIdx >= 0) setActiveIndex(globalIdx);
     }
@@ -483,6 +494,25 @@ export default function App() {
                     ))}
                   </View>
                 )}
+              </View>
+
+            ) : mode === 'list' ? (
+              /* ——— MODE LISTE ——— */
+              <View style={[styles.card, { width: cardWidth }]}>
+                <LinearGradient colors={bgColors} style={StyleSheet.absoluteFillObject} />
+                <View style={styles.decorCircle} pointerEvents="none" />
+                <EventList
+                  events={countdownEvents}
+                  activeEvent={activeEvent}
+                  onSelectEvent={(id) => {
+                    const globalIdx = events.findIndex(e => e.id === id);
+                    if (globalIdx >= 0) {
+                      switchTo(globalIdx);
+                      setMode('countdown');
+                    }
+                  }}
+                  onAddEvent={addEvent}
+                />
               </View>
 
             ) : (

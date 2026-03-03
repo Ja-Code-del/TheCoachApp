@@ -4,6 +4,7 @@ import {
   ActivityIndicator, StyleSheet, Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { t } from '../../lib/i18n';
 
 // --- TOOLTIP GLASSMORPHISM ---
@@ -90,55 +91,38 @@ function PreciseCounter({ timeLeft, currentFont, counterStyle }) {
 
   const isGlass = counterStyle === 'glass';
 
+  // Wrapper verre pour un bloc de chiffres précis
+  const GlassCell = ({ value, unit }) => (
+    <View style={styles.preciseCell}>
+      {isGlass ? (
+        <BlurView intensity={80} tint="systemUltraThinMaterialLight" style={styles.preciseDigitGlass}>
+          <Text style={[styles.preciseNumber, styles.preciseNumberGlass, { fontFamily: currentFont.numberStyle.fontFamily }]}>
+            {value}
+          </Text>
+        </BlurView>
+      ) : (
+        <Text style={[styles.preciseNumber, { fontFamily: currentFont.numberStyle.fontFamily }]}>
+          {value}
+        </Text>
+      )}
+      <Text style={[styles.preciseUnit, isGlass && styles.preciseUnitGlass]}>{unit}</Text>
+    </View>
+  );
+
   return (
-    <Animated.View
-      style={[
-        styles.preciseWrapper,
-        isGlass && styles.preciseWrapperGlass,
-        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-      ]}
-    >
+    <Animated.View style={[styles.preciseWrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={styles.preciseBlock}>
 
         {timeLeft.days > 0 && (
           <>
-            <View style={styles.preciseCell}>
-              <Text style={[
-                styles.preciseNumber,
-                isGlass && styles.preciseNumberGlass,
-                { fontFamily: currentFont.numberStyle.fontFamily },
-              ]}>
-                {timeLeft.days}
-              </Text>
-              <Text style={[styles.preciseUnit, isGlass && styles.preciseUnitGlass]}>j</Text>
-            </View>
+            <GlassCell value={timeLeft.days} unit="j" />
             <Text style={[styles.preciseSep, isGlass && styles.preciseSepGlass]}>·</Text>
           </>
         )}
 
-        <View style={styles.preciseCell}>
-          <Text style={[
-            styles.preciseNumber,
-            isGlass && styles.preciseNumberGlass,
-            { fontFamily: currentFont.numberStyle.fontFamily },
-          ]}>
-            {String(timeLeft.hours).padStart(2, '0')}
-          </Text>
-          <Text style={[styles.preciseUnit, isGlass && styles.preciseUnitGlass]}>h</Text>
-        </View>
-
+        <GlassCell value={String(timeLeft.hours).padStart(2, '0')} unit="h" />
         <Text style={[styles.preciseSep, isGlass && styles.preciseSepGlass]}>·</Text>
-
-        <View style={styles.preciseCell}>
-          <Text style={[
-            styles.preciseNumber,
-            isGlass && styles.preciseNumberGlass,
-            { fontFamily: currentFont.numberStyle.fontFamily },
-          ]}>
-            {String(timeLeft.minutes).padStart(2, '0')}
-          </Text>
-          <Text style={[styles.preciseUnit, isGlass && styles.preciseUnitGlass]}>min</Text>
-        </View>
+        <GlassCell value={String(timeLeft.minutes).padStart(2, '0')} unit="min" />
 
       </View>
 
@@ -223,9 +207,21 @@ export default function WidgetDisplay({
           />
         ) : (
           <>
-            <Text style={[styles.daysNumber, { fontFamily: currentFont.numberStyle.fontFamily }]}>
-              {daysLeft}
-            </Text>
+            {counterStyle === 'glass' ? (
+              <View style={styles.digitsRow}>
+                {String(daysLeft).split('').map((digit, i) => (
+                  <BlurView key={i} intensity={80} tint="systemUltraThinMaterialLight" style={styles.digitGlassCard}>
+                    <Text style={[styles.daysNumber, styles.daysNumberGlass, { fontFamily: currentFont.numberStyle.fontFamily }]}>
+                      {digit}
+                    </Text>
+                  </BlurView>
+                ))}
+              </View>
+            ) : (
+              <Text style={[styles.daysNumber, { fontFamily: currentFont.numberStyle.fontFamily }]}>
+                {daysLeft}
+              </Text>
+            )}
             <Text style={[styles.daysLabel, {
               fontFamily: currentFont.labelStyle.fontFamily,
               letterSpacing: currentFont.labelStyle.letterSpacing ?? 8,
@@ -391,22 +387,39 @@ const styles = StyleSheet.create({
     letterSpacing: 6,
   },
 
+  // --- Compteur principal : chiffres en verre individuels ---
+  digitsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  digitGlassCard: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.75)',
+  },
+  daysNumberGlass: {
+    textShadowColor: 'rgba(255,255,255,0.2)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+
   // --- Compteur précis wrapper ---
   preciseWrapper: {
     alignItems: 'center',
     gap: 6,
   },
-  preciseWrapperGlass: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 28,
-    paddingHorizontal: 22,
-    paddingVertical: 16,
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
+  // --- Compteur précis : chiffre en verre ---
+  preciseDigitGlass: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.75)',
   },
 
   // --- Compteur précis contenu ---
