@@ -83,7 +83,7 @@ function ModeToggle({ mode, onSwitch, light }) {
         { backgroundColor: pillBg, borderColor: pillBorder, width: TAB_W - 4, transform: [{ translateX: pillTranslate }] },
       ]} />
       <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('countdown')} activeOpacity={0.7}>
-        <Text style={[toggleStyles.label, { color: activeColor('countdown') }]}>Événements</Text>
+        <Text style={[toggleStyles.label, { color: activeColor('countdown') }]}>Galérie</Text>
       </TouchableOpacity>
       <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('list')} activeOpacity={0.7}>
         <Text style={[toggleStyles.label, { color: activeColor('list') }]}>Liste</Text>
