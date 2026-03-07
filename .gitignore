@@ -4,3 +4,4 @@ mon-app/.env
 TheCoachAppMobile/.env
 /mon-app
 mon-app/src/components/widget/WidgetDisplay.jsx
+theCoachApp-legal/
