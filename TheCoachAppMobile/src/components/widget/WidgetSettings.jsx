@@ -21,7 +21,13 @@ const getTodayDate = () => {
   d.setHours(0, 0, 0, 0);
   return d;
 };
-const dateToStr   = (date) => date.toISOString().split('T')[0];
+const dateToStr   = (date) => {
+  const safe = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+  const y   = safe.getFullYear();
+  const m   = String(safe.getMonth() + 1).padStart(2, '0');
+  const day = String(safe.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 const strToDate   = (str) => {
   if (!str) return getTomorrowDate();
   const [y, m, d] = str.split('-').map(Number);
@@ -261,7 +267,7 @@ function DatePickerModal({ visible, currentDate, onConfirm, onClose }) {
           <DateTimePicker
             value={pickerDate}
             mode="date"
-            display="spinner"
+            display="inline"
             minimumDate={getTodayDate()}
             onChange={(_, d) => { if (d) setPickerDate(d); }}
             locale="fr-FR"
@@ -352,12 +358,12 @@ function TimePickerModal({ visible, currentTime, onConfirm, onClear, onClose }) 
 
 const modalSt = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#12122a', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40, gap: 16 },
+  sheet: { backgroundColor: '#12122a', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40, gap: 12 },
   handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 4 },
   titleBlock: { gap: 4 },
   title: { fontSize: 18, color: '#fff', textAlign: 'center' },
   subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
-  picker: { height: 180 },
+  picker: { height: 370 },
   actions: { flexDirection: 'row', gap: 10 },
   cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 14 },
   cancelBtnText: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
