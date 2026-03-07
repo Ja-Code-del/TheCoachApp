@@ -151,6 +151,7 @@ export default function App() {
   const [mode, setMode] = useState('countdown'); // 'countdown' | 'list' | 'memoir'
   const [isMemoirEditing, setIsMemoirEditing] = useState(false);
   const [memoirTheme, setMemoirTheme] = useState('light'); // 'light' | 'dark'
+  const [jourJDismissed, setJourJDismissed] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem('hasLaunched').then(value => {
@@ -216,7 +217,7 @@ export default function App() {
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  const isJourJ = daysLeft === 0 && !!activeEvent.theme && activeEvent.targetDate === todayStr;
+  const isJourJ = daysLeft === 0 && !!activeEvent.theme && activeEvent.targetDate === todayStr && !jourJDismissed;
 
   // --- Events filtrés par mode ---
   const countdownEvents = useMemo(
@@ -265,7 +266,7 @@ export default function App() {
     }).start();
   }, [fadeVisible, isFirstLaunch, isJourJ, mode]);
 
-  useEffect(() => { resetQuoteError(); }, [activeIndex, resetQuoteError]);
+  useEffect(() => { resetQuoteError(); setJourJDismissed(false); }, [activeIndex, resetQuoteError]);
   useEffect(() => { if (!isSettingsOpen) setConfirmDelete(false); }, [isSettingsOpen]);
 
   // Basculement de mode : pointe vers le premier event du mode cible
@@ -582,6 +583,8 @@ export default function App() {
                     theme={activeEvent.theme}
                     onShare={handleShare}
                     isSharing={isSharing}
+                    onAddEvent={addEvent}
+                    onDismiss={() => setJourJDismissed(true)}
                   />
                 )}
 
