@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, Modal,
-  ScrollView, ActivityIndicator, StyleSheet, Platform,
-  useWindowDimensions, Alert,
+  View, Text, TextInput, TouchableOpacity,
+  ScrollView, ActivityIndicator, StyleSheet, Platform, useWindowDimensions, Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -10,40 +9,42 @@ import { FONTS } from '../../constants/fonts';
 import { requestNotificationPermission } from '../../hooks/useNotifications';
 import { t } from '../../lib/i18n';
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
+// ─── HELPERS DATE ──────────────────────────────────────────────────────────
 const getTomorrowDate = () => {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   d.setHours(0, 0, 0, 0);
   return d;
 };
-const dateToStr    = (d) => d.toISOString().split('T')[0];
-const strToDate    = (s) => {
-  if (!s) return getTomorrowDate();
-  const [y, m, d] = s.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  return isNaN(dt.getTime()) ? getTomorrowDate() : dt;
+const getTodayDate = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 };
-const formatDateFR = (s) => {
-  if (!s) return '';
-  const [y, m, d] = s.split('-').map(Number);
+const dateToStr   = (date) => date.toISOString().split('T')[0];
+const strToDate   = (str) => {
+  if (!str) return getTomorrowDate();
+  const [y, m, d] = str.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return isNaN(date.getTime()) ? getTomorrowDate() : date;
+};
+const formatDateFR = (str) => {
+  if (!str) return '';
+  const [y, m, d] = str.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
 };
-const formatDatetimeFR = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return (
-    d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
-    + ' à '
-    + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  );
+const formatDatetimeFR = (isoString) => {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  return d.toLocaleDateString('fr-FR', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 };
-const generateReminderId = () =>
-  `rem_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
+const generateReminderId = () => `rem_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
 
-// ─── COUNTER STYLES ─────────────────────────────────────────────────────────
+// ─── COUNTER STYLES ────────────────────────────────────────────────────────
 const COUNTER_STYLES = [
   { id: 'default', labelKey: 'settings_counter_standard', descKey: 'settings_counter_standard_desc', preview: '6j · 14h · 32min' },
   { id: 'glass',   labelKey: 'settings_counter_glass',    descKey: 'settings_counter_glass_desc',    preview: '6j · 14h · 32min' },
@@ -51,45 +52,235 @@ const COUNTER_STYLES = [
 
 const MAX_REMINDERS = 3;
 
+// ─── REMINDER ROW ──────────────────────────────────────────────────────────
+function ReminderRow({ reminder, onUpdate, onDelete, targetDate }) {
+  const [showPicker, setShowPicker]     = useState(false);
+  const [pickerMode, setPickerMode]     = useState('date'); // 'date' | 'time'
+  const [editingMsg, setEditingMsg]     = useState(false);
+
+  const currentDate = reminder.datetime ? new Date(reminder.datetime) : (() => {
+    // Défaut : J-1 à 9h00 par rapport à la date de l'event
+    const d = strToDate(targetDate);
+    d.setDate(d.getDate() - 1);
+    d.setHours(9, 0, 0, 0);
+    return d;
+  })();
+
+  const handlePickerChange = (e, selected) => {
+    if (Platform.OS === 'android') setShowPicker(false);
+    if (!selected) return;
+
+    if (Platform.OS === 'android') {
+      if (pickerMode === 'date') {
+        // Sur Android : d'abord date, puis heure
+        const merged = new Date(selected);
+        merged.setHours(currentDate.getHours(), currentDate.getMinutes());
+        onUpdate({ datetime: merged.toISOString() });
+        setTimeout(() => { setPickerMode('time'); setShowPicker(true); }, 100);
+      } else {
+        const merged = new Date(currentDate);
+        merged.setHours(selected.getHours(), selected.getMinutes());
+        onUpdate({ datetime: merged.toISOString() });
+        setPickerMode('date');
+      }
+    } else {
+      onUpdate({ datetime: selected.toISOString() });
+    }
+  };
+
+  const isPast = reminder.datetime && new Date(reminder.datetime) <= new Date();
+
+  return (
+    <View style={remSt.row}>
+      {/* Ligne principale : icône + date/heure + supprimer */}
+      <View style={remSt.mainLine}>
+        <View style={[remSt.bellIcon, isPast && remSt.bellIconPast]}>
+          <Feather name="bell" size={14} color={isPast ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.7)'} />
+        </View>
+
+        <TouchableOpacity
+          style={remSt.datetimeBtn}
+          onPress={() => { setPickerMode('date'); setShowPicker(true); }}
+          activeOpacity={0.7}
+        >
+          <Text style={[remSt.datetimeText, isPast && remSt.datetimeTextPast]}>
+            {reminder.datetime ? formatDatetimeFR(reminder.datetime) : t('reminders_choose_datetime')}
+          </Text>
+          {isPast && <Text style={remSt.pastBadge}>{t('reminders_past_badge')}</Text>}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={remSt.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
+          <Feather name="x" size={13} color="rgba(255,255,255,0.4)" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Message personnalisé — ligne secondaire */}
+      <TouchableOpacity
+        style={remSt.msgToggle}
+        onPress={() => setEditingMsg(v => !v)}
+        activeOpacity={0.7}
+      >
+        <Feather
+          name={editingMsg ? 'chevron-up' : 'message-square'}
+          size={11}
+          color="rgba(255,255,255,0.3)"
+        />
+        <Text style={remSt.msgToggleText}>
+          {editingMsg ? t('reminders_message_hide') : reminder.message ? t('reminders_message_has') : t('reminders_message_add')}
+        </Text>
+      </TouchableOpacity>
+
+      {editingMsg && (
+        <TextInput
+          style={remSt.msgInput}
+          value={reminder.message || ''}
+          onChangeText={v => onUpdate({ message: v })}
+          placeholder={t('reminders_message_placeholder')}
+          placeholderTextColor="rgba(255,255,255,0.2)"
+          maxLength={100}
+        />
+      )}
+
+      {/* DateTimePicker iOS — inline */}
+      {showPicker && Platform.OS === 'ios' && (
+        <DateTimePicker
+          value={currentDate}
+          mode="datetime"
+          display="spinner"
+          onChange={handlePickerChange}
+          locale="fr-FR"
+          textColor="#fff"
+          style={remSt.picker}
+        />
+      )}
+
+      {/* DateTimePicker Android — modal */}
+      {showPicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={currentDate}
+          mode={pickerMode}
+          display="default"
+          onChange={handlePickerChange}
+        />
+      )}
+    </View>
+  );
+}
+
+const remSt = StyleSheet.create({
+  row: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+  },
+  mainLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bellIcon: {
+    width: 30, height: 30,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellIconPast: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  datetimeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  datetimeText: {
+    fontSize: 14,
+    fontFamily: 'Inter_300Light',
+    color: '#fff',
+  },
+  datetimeTextPast: {
+    color: 'rgba(255,255,255,0.3)',
+  },
+  pastBadge: {
+    fontSize: 9,
+    fontFamily: 'Inter_700Bold',
+    color: 'rgba(255,165,0,0.8)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  deleteBtn: {
+    width: 28, height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  msgToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 2,
+  },
+  msgToggleText: {
+    fontSize: 11,
+    fontFamily: 'Inter_300Light',
+    color: 'rgba(255,255,255,0.35)',
+  },
+  msgInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    padding: 10,
+    color: '#fff',
+    fontSize: 13,
+    fontFamily: 'Inter_300Light',
+  },
+  picker: {
+    height: 140,
+    marginTop: 4,
+  },
+});
+
+
 // ─── DATE PICKER MODAL ──────────────────────────────────────────────────────
 function DatePickerModal({ visible, currentDate, onConfirm, onClose }) {
-  const [pickerDate, setPickerDate] = useState(currentDate);
-
-  // Reset quand le modal s'ouvre
-  React.useEffect(() => {
-    if (visible) setPickerDate(currentDate);
-  }, [visible]);
+  const [pickerDate, setPickerDate] = React.useState(currentDate);
+  React.useEffect(() => { if (visible) setPickerDate(currentDate); }, [visible]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={modalSt.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={modalSt.sheet}>
           <View style={modalSt.handle} />
-
-          <Text style={[modalSt.title, { fontFamily: 'Inter_900Black' }]}>
-            {t('settings_date')}
-          </Text>
-
+          <Text style={[modalSt.title, { fontFamily: 'Inter_900Black' }]}>{t('settings_date')}</Text>
           <DateTimePicker
             value={pickerDate}
             mode="date"
             display="spinner"
-            minimumDate={getTomorrowDate()}
+            minimumDate={getTodayDate()}
             onChange={(_, d) => { if (d) setPickerDate(d); }}
             locale="fr-FR"
             textColor="#fff"
             style={modalSt.picker}
           />
-
+          {pickerDate.toDateString() === new Date().toDateString() && (
+            <View style={modalSt.todayWarning}>
+              <Feather name="clock" size={11} color="rgba(251,191,36,0.9)" />
+              <Text style={[modalSt.todayWarningText, { fontFamily: 'Inter_300Light' }]}>
+                Event aujourd'hui — pensez à ajouter l'heure.
+              </Text>
+            </View>
+          )}
           <View style={modalSt.actions}>
             <TouchableOpacity style={modalSt.cancelBtn} onPress={onClose} activeOpacity={0.7}>
               <Text style={[modalSt.cancelBtnText, { fontFamily: 'Inter_700Bold' }]}>{t('cancel')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={modalSt.confirmBtn}
-              onPress={() => onConfirm(pickerDate)}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={modalSt.confirmBtn} onPress={() => onConfirm(pickerDate)} activeOpacity={0.85}>
               <Text style={[modalSt.confirmBtnText, { fontFamily: 'Inter_700Bold' }]}>Confirmer</Text>
             </TouchableOpacity>
           </View>
@@ -110,13 +301,9 @@ function TimePickerModal({ visible, currentTime, onConfirm, onClear, onClose }) 
       d.setHours(9, 0, 0, 0);
     }
     return d;
-  }, [visible]); // recalcule à chaque ouverture
-
-  const [pickerDate, setPickerDate] = useState(initial);
-
-  React.useEffect(() => {
-    if (visible) setPickerDate(initial);
   }, [visible]);
+  const [pickerDate, setPickerDate] = React.useState(initial);
+  React.useEffect(() => { if (visible) setPickerDate(initial); }, [visible]);
 
   const handleConfirm = () => {
     const hh = String(pickerDate.getHours()).padStart(2, '0');
@@ -129,16 +316,10 @@ function TimePickerModal({ visible, currentTime, onConfirm, onClear, onClose }) 
       <TouchableOpacity style={modalSt.overlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={modalSt.sheet}>
           <View style={modalSt.handle} />
-
           <View style={modalSt.titleBlock}>
-            <Text style={[modalSt.title, { fontFamily: 'Inter_900Black' }]}>
-              Heure de l'événement
-            </Text>
-            <Text style={[modalSt.subtitle, { fontFamily: 'Inter_300Light' }]}>
-              Optionnel — affine le décompte le Jour J
-            </Text>
+            <Text style={[modalSt.title, { fontFamily: 'Inter_900Black' }]}>Heure de l'événement</Text>
+            <Text style={[modalSt.subtitle, { fontFamily: 'Inter_300Light' }]}>Optionnel — affine le décompte le Jour J</Text>
           </View>
-
           <DateTimePicker
             value={pickerDate}
             mode="time"
@@ -148,29 +329,21 @@ function TimePickerModal({ visible, currentTime, onConfirm, onClear, onClose }) 
             textColor="#fff"
             style={modalSt.picker}
           />
-
           <View style={modalSt.actions}>
             {currentTime ? (
               <TouchableOpacity style={modalSt.clearBtn} onPress={onClear} activeOpacity={0.7}>
                 <Feather name="x" size={13} color="rgba(255,255,255,0.45)" />
-                <Text style={[modalSt.clearBtnText, { fontFamily: 'Inter_700Bold' }]}>
-                  Supprimer
-                </Text>
+                <Text style={[modalSt.clearBtnText, { fontFamily: 'Inter_700Bold' }]}>Supprimer</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity style={modalSt.cancelBtn} onPress={onClose} activeOpacity={0.7}>
                 <Text style={[modalSt.cancelBtnText, { fontFamily: 'Inter_700Bold' }]}>{t('cancel')}</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={modalSt.confirmBtn}
-              onPress={handleConfirm}
-              activeOpacity={0.85}
-            >
+            <TouchableOpacity style={modalSt.confirmBtn} onPress={handleConfirm} activeOpacity={0.85}>
               <Text style={[modalSt.confirmBtnText, { fontFamily: 'Inter_700Bold' }]}>Confirmer</Text>
             </TouchableOpacity>
           </View>
-
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -178,201 +351,25 @@ function TimePickerModal({ visible, currentTime, onConfirm, onClear, onClose }) 
 }
 
 const modalSt = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#12122a',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 40,
-    gap: 16,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 4,
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#12122a', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40, gap: 16 },
+  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 4 },
   titleBlock: { gap: 4 },
-  title: {
-    fontSize: 18,
-    color: '#fff',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-    textAlign: 'center',
-  },
+  title: { fontSize: 18, color: '#fff', textAlign: 'center' },
+  subtitle: { fontSize: 12, color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
   picker: { height: 180 },
   actions: { flexDirection: 'row', gap: 10 },
-  cancelBtn: {
-    flex: 1,
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 14,
-  },
+  cancelBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 14 },
   cancelBtnText: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
-  clearBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    backgroundColor: 'rgba(239,68,68,0.12)',
-    borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)',
-    borderRadius: 14,
-  },
+  clearBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 14, backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)', borderRadius: 14 },
   clearBtnText: { fontSize: 14, color: 'rgba(252,165,165,0.8)' },
-  confirmBtn: {
-    flex: 2,
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 14,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
-    borderRadius: 14,
-  },
+  confirmBtn: { flex: 2, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', borderRadius: 14 },
   confirmBtnText: { fontSize: 14, color: '#fff' },
+  todayWarning: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: 'rgba(251,191,36,0.08)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.2)', borderRadius: 12 },
+  todayWarningText: { fontSize: 12, color: 'rgba(251,191,36,0.85)', flex: 1 },
 });
 
-// ─── REMINDER ROW (inchangé) ─────────────────────────────────────────────────
-function ReminderRow({ reminder, onUpdate, onDelete, targetDate }) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState('date');
-  const [editingMsg, setEditingMsg] = useState(false);
-
-  const currentDate = reminder.datetime ? new Date(reminder.datetime) : (() => {
-    const d = strToDate(targetDate);
-    d.setDate(d.getDate() - 1);
-    d.setHours(9, 0, 0, 0);
-    return d;
-  })();
-
-  const handlePickerChange = (e, selected) => {
-    if (Platform.OS === 'android') setShowPicker(false);
-    if (!selected) return;
-    if (Platform.OS === 'android') {
-      if (pickerMode === 'date') {
-        const merged = new Date(selected);
-        merged.setHours(currentDate.getHours(), currentDate.getMinutes());
-        onUpdate({ datetime: merged.toISOString() });
-        setTimeout(() => { setPickerMode('time'); setShowPicker(true); }, 100);
-      } else {
-        const merged = new Date(currentDate);
-        merged.setHours(selected.getHours(), selected.getMinutes());
-        onUpdate({ datetime: merged.toISOString() });
-        setPickerMode('date');
-      }
-    } else {
-      onUpdate({ datetime: selected.toISOString() });
-    }
-  };
-
-  const isPast = reminder.datetime && new Date(reminder.datetime) <= new Date();
-
-  return (
-    <View style={remSt.row}>
-      <View style={remSt.mainLine}>
-        <View style={[remSt.bellIcon, isPast && remSt.bellIconPast]}>
-          <Feather name="bell" size={14} color={isPast ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.7)'} />
-        </View>
-        <TouchableOpacity
-          style={remSt.datetimeBtn}
-          onPress={() => { setPickerMode('date'); setShowPicker(true); }}
-          activeOpacity={0.7}
-        >
-          <Text style={[remSt.datetimeText, isPast && remSt.datetimeTextPast]}>
-            {reminder.datetime ? formatDatetimeFR(reminder.datetime) : t('reminders_choose_datetime')}
-          </Text>
-          {isPast && <Text style={remSt.pastBadge}>{t('reminders_past_badge')}</Text>}
-        </TouchableOpacity>
-        <TouchableOpacity style={remSt.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
-          <Feather name="x" size={13} color="rgba(255,255,255,0.4)" />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={remSt.msgToggle} onPress={() => setEditingMsg(v => !v)} activeOpacity={0.7}>
-        <Feather name={editingMsg ? 'chevron-up' : 'message-square'} size={11} color="rgba(255,255,255,0.3)" />
-        <Text style={remSt.msgToggleText}>
-          {editingMsg ? t('reminders_message_hide') : reminder.message ? t('reminders_message_has') : t('reminders_message_add')}
-        </Text>
-      </TouchableOpacity>
-
-      {editingMsg && (
-        <TextInput
-          style={remSt.msgInput}
-          value={reminder.message || ''}
-          onChangeText={v => onUpdate({ message: v })}
-          placeholder={t('reminders_message_placeholder')}
-          placeholderTextColor="rgba(255,255,255,0.2)"
-          maxLength={100}
-        />
-      )}
-
-      {showPicker && Platform.OS === 'ios' && (
-        <DateTimePicker
-          value={currentDate}
-          mode="datetime"
-          display="spinner"
-          onChange={handlePickerChange}
-          locale="fr-FR"
-          textColor="#fff"
-          style={remSt.picker}
-        />
-      )}
-      {showPicker && Platform.OS === 'android' && (
-        <DateTimePicker
-          value={currentDate}
-          mode={pickerMode}
-          display="default"
-          onChange={handlePickerChange}
-        />
-      )}
-    </View>
-  );
-}
-
-const remSt = StyleSheet.create({
-  row: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 16, padding: 12, gap: 8,
-  },
-  mainLine: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bellIcon: {
-    width: 30, height: 30, borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  bellIconPast: { backgroundColor: 'rgba(255,255,255,0.03)' },
-  datetimeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  datetimeText: { fontSize: 14, fontFamily: 'Inter_300Light', color: '#fff' },
-  datetimeTextPast: { color: 'rgba(255,255,255,0.3)' },
-  pastBadge: { fontSize: 9, fontFamily: 'Inter_700Bold', color: 'rgba(255,165,0,0.8)', textTransform: 'uppercase', letterSpacing: 1 },
-  deleteBtn: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
-  msgToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 2 },
-  msgToggleText: { fontSize: 11, fontFamily: 'Inter_300Light', color: 'rgba(255,255,255,0.35)' },
-  msgInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12, padding: 10,
-    color: '#fff', fontSize: 13, fontFamily: 'Inter_300Light',
-  },
-  picker: { height: 140, marginTop: 4 },
-});
-
-// ─── WIDGET SETTINGS ────────────────────────────────────────────────────────
+// ─── WIDGET SETTINGS ───────────────────────────────────────────────────────
 export default function WidgetSettings({
   activeEvent, eventsCount,
   confirmDelete, setConfirmDelete,
@@ -386,31 +383,39 @@ export default function WidgetSettings({
   const currentCounterStyle = activeEvent.counterStyle || 'default';
   const reminders = activeEvent.reminders || [];
 
-  // ── Rappels ───────────────────────────────────────────────────────────────
+  // ── Rappels ──────────────────────────────────────────────────────────────
   const handleAddReminder = async () => {
     if (reminders.length >= MAX_REMINDERS) return;
     const granted = await requestNotificationPermission();
     if (!granted) {
-      Alert.alert(t('reminders_permission_title'), t('reminders_permission_message'), [{ text: 'OK' }]);
+      Alert.alert(
+        t('reminders_permission_title'),
+        t('reminders_permission_message'),
+        [{ text: 'OK' }]
+      );
       return;
     }
+    // Proposer une date par défaut : J-1 à 9h
     const d = strToDate(activeEvent.targetDate);
     d.setDate(d.getDate() - 1);
     d.setHours(9, 0, 0, 0);
+    const newReminder = {
+      id: generateReminderId(),
+      datetime: d > new Date() ? d.toISOString() : null,
+      message: '',
+    };
+    onUpdateEvent({ reminders: [...reminders, newReminder] });
+  };
+
+  const handleUpdateReminder = (id, patch) => {
     onUpdateEvent({
-      reminders: [...reminders, {
-        id: generateReminderId(),
-        datetime: d > new Date() ? d.toISOString() : null,
-        message: '',
-      }],
+      reminders: reminders.map(r => r.id === id ? { ...r, ...patch } : r),
     });
   };
 
-  const handleUpdateReminder = (id, patch) =>
-    onUpdateEvent({ reminders: reminders.map(r => r.id === id ? { ...r, ...patch } : r) });
-
-  const handleDeleteReminder = (id) =>
+  const handleDeleteReminder = (id) => {
     onUpdateEvent({ reminders: reminders.filter(r => r.id !== id) });
+  };
 
   return (
     <View style={styles.container}>
@@ -441,7 +446,7 @@ export default function WidgetSettings({
         </View>
       </View>
 
-      {/* Formulaire */}
+      {/* Formulaire scrollable */}
       <ScrollView
         style={{ maxHeight: screenHeight * 0.60 }}
         showsVerticalScrollIndicator={false}
@@ -471,19 +476,16 @@ export default function WidgetSettings({
             placeholder={t('settings_theme_placeholder')}
             placeholderTextColor="rgba(255,255,255,0.3)"
           />
-          <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>{t('settings_theme_hint')}</Text>
+          <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
+            {t('settings_theme_hint')}
+          </Text>
         </View>
 
-        {/* ── DATE & HEURE ── */}
+        {/* Date & Heure */}
         <View style={styles.field}>
           <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('settings_date')}</Text>
 
-          {/* Bouton Date — même UX iOS et Android */}
-          <TouchableOpacity
-            style={styles.dateBtn}
-            onPress={() => setShowDateModal(true)}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.dateBtn} onPress={() => setShowDateModal(true)} activeOpacity={0.7}>
             <Feather name="calendar" size={15} color="rgba(255,255,255,0.7)" />
             <Text style={[styles.dateBtnText, { fontFamily: 'Inter_300Light' }]}>
               {activeEvent.targetDate ? formatDateFR(activeEvent.targetDate) : t('settings_date_placeholder')}
@@ -491,32 +493,16 @@ export default function WidgetSettings({
             <Feather name="chevron-right" size={14} color="rgba(255,255,255,0.3)" />
           </TouchableOpacity>
 
-          {/* Bouton Heure */}
           <TouchableOpacity
             style={[styles.dateBtn, styles.timeBtnWrapper]}
             onPress={() => setShowTimeModal(true)}
             activeOpacity={0.7}
           >
-            <Feather
-              name="clock"
-              size={15}
-              color={activeEvent.targetTime ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)'}
-            />
-            <Text style={[
-              styles.dateBtnText,
-              { fontFamily: 'Inter_300Light' },
-              !activeEvent.targetTime && styles.timePlaceholder,
-            ]}>
-              {activeEvent.targetTime
-                ? `À ${activeEvent.targetTime}`
-                : 'Ajouter une heure (optionnel)'
-              }
+            <Feather name="clock" size={15} color={activeEvent.targetTime ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)'} />
+            <Text style={[styles.dateBtnText, { fontFamily: 'Inter_300Light' }, !activeEvent.targetTime && styles.timePlaceholder]}>
+              {activeEvent.targetTime ? `À ${activeEvent.targetTime}` : 'Ajouter une heure (optionnel)'}
             </Text>
-            <Feather
-              name={activeEvent.targetTime ? 'chevron-right' : 'plus'}
-              size={14}
-              color="rgba(255,255,255,0.25)"
-            />
+            <Feather name={activeEvent.targetTime ? 'chevron-right' : 'plus'} size={14} color="rgba(255,255,255,0.25)" />
           </TouchableOpacity>
 
           {activeEvent.targetTime && (
@@ -526,28 +512,37 @@ export default function WidgetSettings({
           )}
         </View>
 
-        {/* Rappels */}
+        {/* ── RAPPELS ── */}
         <View style={styles.field}>
           <View style={styles.labelRow}>
             <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('reminders_title')}</Text>
-            <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>{reminders.length}/{MAX_REMINDERS}</Text>
+            <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
+              {reminders.length}/{MAX_REMINDERS}
+            </Text>
           </View>
+
           {reminders.length === 0 && (
-            <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>{t('reminders_none')}</Text>
+            <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
+              {t('reminders_none')}
+            </Text>
           )}
-          {reminders.map(r => (
+
+          {reminders.map(reminder => (
             <ReminderRow
-              key={r.id}
-              reminder={r}
+              key={reminder.id}
+              reminder={reminder}
               targetDate={activeEvent.targetDate}
-              onUpdate={patch => handleUpdateReminder(r.id, patch)}
-              onDelete={() => handleDeleteReminder(r.id)}
+              onUpdate={patch => handleUpdateReminder(reminder.id, patch)}
+              onDelete={() => handleDeleteReminder(reminder.id)}
             />
           ))}
+
           {reminders.length < MAX_REMINDERS && (
             <TouchableOpacity style={styles.addReminderBtn} onPress={handleAddReminder} activeOpacity={0.7}>
               <Feather name="plus" size={14} color="rgba(255,255,255,0.6)" />
-              <Text style={[styles.addReminderText, { fontFamily: 'Inter_700Bold' }]}>{t('reminders_add')}</Text>
+              <Text style={[styles.addReminderText, { fontFamily: 'Inter_700Bold' }]}>
+                {t('reminders_add')}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -565,7 +560,7 @@ export default function WidgetSettings({
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.fontLabel, { fontFamily: 'Inter_700Bold' }]}>{font.label}</Text>
-                  <Text style={[styles.fontName,  { fontFamily: font.numberStyle.fontFamily }]}>{font.name}</Text>
+                  <Text style={[styles.fontName, { fontFamily: font.numberStyle.fontFamily }]}>{font.name}</Text>
                 </View>
                 <Text style={[styles.fontPreview, { fontFamily: font.numberStyle.fontFamily }]}>42</Text>
               </TouchableOpacity>
@@ -576,7 +571,9 @@ export default function WidgetSettings({
         {/* Style compteur */}
         <View style={styles.field}>
           <Text style={[styles.label, { fontFamily: 'Inter_700Bold' }]}>{t('settings_counter_style')}</Text>
-          <Text style={[styles.hint,  { fontFamily: 'Inter_300Light' }]}>{t('settings_counter_style_hint')}</Text>
+          <Text style={[styles.hint, { fontFamily: 'Inter_300Light' }]}>
+            {t('settings_counter_style_hint')}
+          </Text>
           <View style={styles.counterStyleList}>
             {COUNTER_STYLES.map(cs => {
               const isActive = currentCounterStyle === cs.id;
@@ -633,7 +630,6 @@ export default function WidgetSettings({
 
       </ScrollView>
 
-      {/* Modals */}
       <DatePickerModal
         visible={showDateModal}
         currentDate={strToDate(activeEvent.targetDate)}
@@ -654,45 +650,71 @@ export default function WidgetSettings({
 
 const styles = StyleSheet.create({
   container: { paddingHorizontal: 28, paddingTop: 20, paddingBottom: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 20,
+  },
   title: { fontSize: 22, fontFamily: 'Inter_900Black', color: '#fff', letterSpacing: -0.5 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  trashBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(239,68,68,0.2)', alignItems: 'center', justifyContent: 'center' },
+  trashBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(239,68,68,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   confirmRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cancelBtn: { paddingHorizontal: 12, paddingVertical: 5, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20 },
+  cancelBtn: {
+    paddingHorizontal: 12, paddingVertical: 5,
+    backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20,
+  },
   cancelBtnText: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
-  deleteBtn: { paddingHorizontal: 12, paddingVertical: 5, backgroundColor: 'rgba(239,68,68,0.4)', borderRadius: 20 },
+  deleteBtn: {
+    paddingHorizontal: 12, paddingVertical: 5,
+    backgroundColor: 'rgba(239,68,68,0.4)', borderRadius: 20,
+  },
   deleteBtnText: { fontSize: 11, color: '#fca5a5' },
-  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   form: { gap: 24, paddingBottom: 8 },
   field: { gap: 10 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 3, color: 'rgba(255,255,255,0.4)' },
-  input: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 16, padding: 16, color: '#fff', fontSize: 15 },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 16, padding: 16, color: '#fff', fontSize: 15,
+  },
   hint: { fontSize: 10, color: 'rgba(255,255,255,0.3)' },
-
-  // Date & Heure
+  datePicker: { height: 160, marginHorizontal: -8 },
+  dateConfirm: { fontSize: 11, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
   dateBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
     borderRadius: 16, padding: 16,
   },
-  dateBtnText: { flex: 1, color: '#fff', fontSize: 15 },
-  timeBtnWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderColor: 'rgba(255,255,255,0.12)',
-    borderStyle: 'dashed',
-  },
-  timePlaceholder: { color: 'rgba(255,255,255,0.3)', fontSize: 14 },
+  dateBtnText: { color: '#fff', fontSize: 15 },
 
   // Rappels
-  addReminderBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderStyle: 'dashed', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)' },
+  addReminderBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 13,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    borderStyle: 'dashed', borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
   addReminderText: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
 
   // Police
   fontList: { gap: 8 },
-  fontBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' },
+  fontBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderRadius: 16, borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)',
+  },
   fontBtnActive: { backgroundColor: 'rgba(255,255,255,0.18)', borderColor: 'rgba(255,255,255,0.45)' },
   fontLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 3, color: 'rgba(255,255,255,0.4)' },
   fontName:  { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
@@ -700,11 +722,18 @@ const styles = StyleSheet.create({
 
   // Style compteur
   counterStyleList: { gap: 10 },
-  counterStyleBtn: { borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.05)', overflow: 'hidden' },
+  counterStyleBtn: {
+    borderRadius: 18, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.05)', overflow: 'hidden',
+  },
   counterStyleBtnActive:      { borderColor: 'rgba(255,255,255,0.45)', backgroundColor: 'rgba(255,255,255,0.10)' },
   counterStyleBtnGlass:       { borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.07)' },
   counterStyleBtnGlassActive: { borderColor: 'rgba(255,255,255,0.40)', backgroundColor: 'rgba(255,255,255,0.13)' },
-  counterPreviewBox: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)', alignItems: 'center' },
+  counterPreviewBox: {
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)', alignItems: 'center',
+  },
   counterPreviewBoxGlass:    { backgroundColor: 'rgba(255,255,255,0.06)', borderBottomColor: 'rgba(255,255,255,0.12)' },
   counterPreviewText:        { fontSize: 20, color: '#fff', letterSpacing: 1 },
   counterPreviewTextGlass:   { textShadowColor: 'rgba(255,255,255,0.2)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
@@ -716,6 +745,15 @@ const styles = StyleSheet.create({
   counterStyleDesc:          { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
 
   // Enregistrer
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', borderRadius: 16, marginTop: 8 },
+  saveBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 16, marginTop: 8,
+  },
   saveBtnText: { color: '#fff', fontSize: 15 },
+  dateBtnText: { flex: 1, color: '#fff', fontSize: 15 },
+  timeBtnWrapper: { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)', borderStyle: 'dashed' },
+  timePlaceholder: { color: 'rgba(255,255,255,0.3)', fontSize: 14 },
 });
