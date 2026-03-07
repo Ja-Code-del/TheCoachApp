@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Modal,
   ScrollView, ActivityIndicator, StyleSheet, Platform, useWindowDimensions, Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
