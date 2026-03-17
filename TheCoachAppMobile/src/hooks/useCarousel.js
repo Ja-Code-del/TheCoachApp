@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
-export function useCarousel(eventsLength, activeIndex, setActiveIndex) {
+export function useCarousel(eventsLength, activeIndex, setActiveIndex, validIndices) {
   const [fadeVisible, setFadeVisible] = useState(true);
   const touchStartX = useRef(null);
   const fadeTimer = useRef(null);
@@ -23,11 +23,17 @@ export function useCarousel(eventsLength, activeIndex, setActiveIndex) {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.nativeEvent.changedTouches[0].pageX;
     if (Math.abs(diff) > 50) {
-      if (diff > 0 && activeIndex < eventsLength - 1) switchTo(activeIndex + 1);
-      if (diff < 0 && activeIndex > 0) switchTo(activeIndex - 1);
+      if (validIndices) {
+        const currentPos = validIndices.indexOf(activeIndex);
+        if (diff > 0 && currentPos < validIndices.length - 1) switchTo(validIndices[currentPos + 1]);
+        if (diff < 0 && currentPos > 0) switchTo(validIndices[currentPos - 1]);
+      } else {
+        if (diff > 0 && activeIndex < eventsLength - 1) switchTo(activeIndex + 1);
+        if (diff < 0 && activeIndex > 0) switchTo(activeIndex - 1);
+      }
     }
     touchStartX.current = null;
-  }, [activeIndex, eventsLength, switchTo]);
+  }, [activeIndex, eventsLength, switchTo, validIndices]);
 
   useEffect(() => () => clearTimeout(fadeTimer.current), []);
 
