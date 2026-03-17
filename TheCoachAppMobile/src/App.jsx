@@ -179,8 +179,25 @@ export default function App() {
 
   useNotifications(events);
 
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  // --- Events filtrés par mode ---
+  const countdownEvents = useMemo(
+    () => events.filter(e => !isMemoir(e)),
+    [events, todayStr]
+  );
+  const memoirEvents = useMemo(
+    () => events.filter(e => isMemoir(e)),
+    [events, todayStr]
+  );
+
+  const countdownIndices = useMemo(
+    () => countdownEvents.map(e => events.findIndex(ev => ev.id === e.id)),
+    [countdownEvents, events]
+  );
+
   const { switchTo, fadeVisible, handleTouchStart, handleTouchEnd } = useCarousel(
-    events.length, activeIndex, setActiveIndex
+    events.length, activeIndex, setActiveIndex, countdownIndices
   );
 
   const {
@@ -215,19 +232,7 @@ export default function App() {
 
   const daysLeft = calcDaysLeft(activeEvent.targetDate);
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-
   const isJourJ = daysLeft === 0 && !!activeEvent.theme && activeEvent.targetDate === todayStr && !jourJDismissed;
-
-  // --- Events filtrés par mode ---
-  const countdownEvents = useMemo(
-    () => events.filter(e => !isMemoir(e)),
-    [events, todayStr]
-  );
-  const memoirEvents = useMemo(
-    () => events.filter(e => isMemoir(e)),
-    [events, todayStr]
-  );
 
   // Index actif dans chaque liste
   const activeMemoirIndex = useMemo(() => {
