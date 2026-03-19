@@ -145,43 +145,30 @@ export default function WidgetDisplay({
   activeEvent, daysLeft, timeLeft, currentFont,
   isLoadingQuote, quoteError, isLoadingImage,
   isSharing, shareError, saveSuccess,
-  onAddEvent, onOpenSettings, onRefreshImage, onRefreshQuote, onShare,
+  onRefreshImage, onRefreshQuote, onShare,
 }) {
   const counterStyle = activeEvent.counterStyle || 'default';
 
   return (
     <View style={styles.container}>
 
-      {/* Header */}
+      {/* Header — bouton image uniquement */}
       <View style={styles.header}>
-        <Tooltip label={t('add_event')}>
-          <TouchableOpacity style={styles.iconBtn} onPress={onAddEvent} activeOpacity={0.7}>
-            <Feather name="plus" size={18} color="rgba(255,255,255,0.8)" />
+        <View />
+        <Tooltip label={t('refresh_image')}>
+          <TouchableOpacity
+            style={[styles.iconBtn, (isLoadingImage || !activeEvent.theme) && styles.iconBtnDisabled]}
+            onPress={onRefreshImage}
+            disabled={isLoadingImage || !activeEvent.theme}
+            activeOpacity={0.7}
+          >
+            <Feather
+              name="image"
+              size={18}
+              color={isLoadingImage ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)'}
+            />
           </TouchableOpacity>
         </Tooltip>
-
-        <View style={styles.headerRight}>
-          <Tooltip label={t('refresh_image')}>
-            <TouchableOpacity
-              style={[styles.iconBtn, (isLoadingImage || !activeEvent.theme) && styles.iconBtnDisabled]}
-              onPress={onRefreshImage}
-              disabled={isLoadingImage || !activeEvent.theme}
-              activeOpacity={0.7}
-            >
-              <Feather
-                name="image"
-                size={18}
-                color={isLoadingImage ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)'}
-              />
-            </TouchableOpacity>
-          </Tooltip>
-
-          <Tooltip label={t('settings_title')}>
-            <TouchableOpacity style={styles.iconBtn} onPress={onOpenSettings} activeOpacity={0.7}>
-              <Feather name="settings" size={18} color="rgba(255,255,255,0.8)" />
-            </TouchableOpacity>
-          </Tooltip>
-        </View>
       </View>
 
       {/* Compteur */}
