@@ -1,8 +1,10 @@
+import 'react-native-gesture-handler';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, Animated, ImageBackground, TouchableOpacity,
   ActivityIndicator, Linking, StyleSheet, useWindowDimensions, Alert,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -43,87 +45,8 @@ import WidgetSettings from './components/widget/WidgetSettings';
 import { FONTS } from './constants/fonts';
 import { calcDaysLeft, calcTimeLeft, isMemoir, DEFAULT_EVENT } from './lib/utils';
 import { t } from './lib/i18n';
-import EventList from './components/widget/EventList';
-
-// --- TOGGLE MODE ---
-function ModeToggle({ mode, onSwitch, light }) {
-  // 0 = countdown, 1 = list, 2 = memoir
-  const modeIndex = mode === 'countdown' ? 0 : mode === 'list' ? 1 : 2;
-  const translateX = useRef(new Animated.Value(modeIndex)).current;
-
-  useEffect(() => {
-    Animated.spring(translateX, {
-      toValue: modeIndex,
-      friction: 8,
-      tension: 60,
-      useNativeDriver: true,
-    }).start();
-  }, [modeIndex]);
-
-  const TAB_W = 90; // largeur de chaque tab (3 × 90 = 270 + 4px padding = 274px)
-
-  const pillTranslate = translateX.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [2, 2 + TAB_W, 2 + TAB_W * 2],
-  });
-
-  const wrapperBg     = light ? 'rgba(0,0,0,0.07)'   : 'rgba(0,0,0,0.25)';
-  const wrapperBorder = light ? 'rgba(0,0,0,0.10)'   : 'rgba(255,255,255,0.12)';
-  const pillBg        = light ? 'rgba(0,0,0,0.09)'   : 'rgba(255,255,255,0.15)';
-  const pillBorder    = light ? 'rgba(0,0,0,0.13)'   : 'rgba(255,255,255,0.25)';
-  const labelColor    = light ? 'rgba(0,0,0,0.38)'   : 'rgba(255,255,255,0.4)';
-  const labelActive   = light ? '#1a1a2e'             : '#fff';
-
-  const activeColor = (m) => mode === m ? labelActive : labelColor;
-
-  return (
-    <View style={[toggleStyles.wrapper, { backgroundColor: wrapperBg, borderColor: wrapperBorder }]}>
-      <Animated.View style={[
-        toggleStyles.pill,
-        { backgroundColor: pillBg, borderColor: pillBorder, width: TAB_W - 4, transform: [{ translateX: pillTranslate }] },
-      ]} />
-      <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('countdown')} activeOpacity={0.7}>
-        <Text style={[toggleStyles.label, { color: activeColor('countdown') }]}>Galérie</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('list')} activeOpacity={0.7}>
-        <Text style={[toggleStyles.label, { color: activeColor('list') }]}>Liste</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[toggleStyles.tab, { width: TAB_W }]} onPress={() => onSwitch('memoir')} activeOpacity={0.7}>
-        <Text style={[toggleStyles.label, { color: activeColor('memoir') }]}>Souvenirs</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const toggleStyles = StyleSheet.create({
-  wrapper: {
-    flexDirection: 'row',
-    borderRadius: 20,
-    padding: 2,
-    marginBottom: 12,
-    alignSelf: 'center',
-    borderWidth: 1,
-    position: 'relative',
-  },
-  pill: {
-    position: 'absolute',
-    top: 2,
-    // width définie inline (TAB_W - 4)
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  tab: {
-    // width définie inline
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: {
-    fontSize: 12,
-    fontFamily: 'Inter_700Bold',
-  },
-});
+import EventListScreen from './components/widget/EventListScreen';
+import FloatingTabBar from './components/FloatingTabBar';
 
 // --- APP ---
 export default function App() {
@@ -148,7 +71,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isNewEvent, setIsNewEvent] = useState(false);
-  const [mode, setMode] = useState('countdown'); // 'countdown' | 'list' | 'memoir'
+  const [mode, setMode] = useState('countdown'); // 'countdown' | 'list' | 'memoir' | 'settings'
   const [isMemoirEditing, setIsMemoirEditing] = useState(false);
   const [memoirTheme, setMemoirTheme] = useState('light'); // 'light' | 'dark'
   const [jourJDismissed, setJourJDismissed] = useState(false);
@@ -175,6 +98,7 @@ export default function App() {
   const {
     events, setEvents, activeIndex, setActiveIndex, activeEvent, isReady,
     updateActiveEvent, updateEventById, appendEvent, deleteActiveEvent,
+    deleteEventById, togglePinById,
   } = useEvents();
 
   useNotifications(events);
@@ -276,6 +200,23 @@ export default function App() {
 
   // Basculement de mode : pointe vers le premier event du mode cible
   const handleSwitchMode = (newMode) => {
+    if (newMode === 'settings') {
+      // Ouvrir les réglages sur l'event actif (mode countdown)
+      if (mode !== 'countdown') {
+        // Revenir en countdown d'abord
+        if (countdownEvents.length > 0) {
+          const globalIdx = events.findIndex(e => e.id === countdownEvents[0].id);
+          if (globalIdx >= 0) setActiveIndex(globalIdx);
+        }
+      }
+      setIsSettingsOpen(true);
+      setMode('countdown');
+      return;
+    }
+    // Fermer settings si on quitte l'onglet
+    setIsSettingsOpen(false);
+    setIsNewEvent(false);
+
     if (newMode === 'memoir' && memoirEvents.length > 0) {
       const globalIdx = events.findIndex(e => e.id === memoirEvents[0].id);
       if (globalIdx >= 0) setActiveIndex(globalIdx);
@@ -388,9 +329,10 @@ export default function App() {
   }
 
   const contentPointerEvents = (isFirstLaunch !== false || isJourJ) ? 'none' : 'box-none';
-  const showToggle = !isFirstLaunch && (countdownEvents.length > 0 || memoirEvents.length > 0);
+  const showFloatingBar = !isFirstLaunch && !isJourJ;
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <LinearGradient
         colors={mode === 'memoir'
@@ -422,11 +364,6 @@ export default function App() {
           )}
 
           <View style={styles.outer}>
-
-            {/* Toggle mode */}
-            {showToggle && (
-              <ModeToggle mode={mode} onSwitch={handleSwitchMode} light={mode === 'memoir' && !memoirIsDark} />
-            )}
 
             {/* ——— MODE SOUVENIR ——— */}
             {mode === 'memoir' ? (
@@ -507,9 +444,9 @@ export default function App() {
               <View style={[styles.card, { width: cardWidth }]}>
                 <LinearGradient colors={bgColors} style={StyleSheet.absoluteFillObject} />
                 <View style={styles.decorCircle} pointerEvents="none" />
-                <EventList
-                  events={countdownEvents}
-                  activeEvent={activeEvent}
+                <EventListScreen
+                  countdownEvents={countdownEvents}
+                  activeEventId={activeEvent?.id}
                   onSelectEvent={(id) => {
                     const globalIdx = events.findIndex(e => e.id === id);
                     if (globalIdx >= 0) {
@@ -517,7 +454,16 @@ export default function App() {
                       setMode('countdown');
                     }
                   }}
-                  onAddEvent={addEvent}
+                  onDeleteEvent={(id) => {
+                    cancelEventNotifications(id);
+                    deleteEventById(id);
+                  }}
+                  onTogglePin={togglePinById}
+                  onReorder={(reorderedCountdown) => {
+                    // Reconstruire la liste globale : countdown réordonné + memoirs inchangés
+                    const memoirList = events.filter(e => isMemoir(e));
+                    setEvents([...reorderedCountdown, ...memoirList]);
+                  }}
                 />
               </View>
 
@@ -609,8 +555,6 @@ export default function App() {
                       isSharing={isSharing}
                       shareError={shareError}
                       saveSuccess={saveSuccess}
-                      onAddEvent={addEvent}
-                      onOpenSettings={() => setIsSettingsOpen(true)}
                       onRefreshImage={() => loadImage()}
                       onRefreshQuote={() => generateQuote()}
                       onShare={handleShare}
@@ -634,9 +578,19 @@ export default function App() {
             )}
 
           </View>
+          {/* Floating Tab Bar */}
+          {showFloatingBar && (
+            <FloatingTabBar
+              mode={isSettingsOpen ? 'settings' : mode}
+              onSwitch={handleSwitchMode}
+              onAddEvent={addEvent}
+            />
+          )}
+
         </SafeAreaView>
       </LinearGradient>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
