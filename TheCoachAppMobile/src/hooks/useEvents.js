@@ -80,6 +80,26 @@ export function useEvents() {
     setActiveIndex(prev => Math.max(0, prev - 1));
   }, [events.length, activeIndex]);
 
+  const deleteEventById = useCallback((id) => {
+    setEvents(prev => {
+      if (prev.length === 1) return prev;
+      const idx = prev.findIndex(e => e.id === id);
+      if (idx < 0) return prev;
+      const next = prev.filter(e => e.id !== id);
+      // Ajuster activeIndex si besoin
+      setActiveIndex(ai => {
+        if (ai >= next.length) return Math.max(0, next.length - 1);
+        if (idx < ai) return ai - 1;
+        return ai;
+      });
+      return next;
+    });
+  }, []);
+
+  const togglePinById = useCallback((id) => {
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, pinned: !e.pinned } : e));
+  }, []);
+
   return {
     events,
     setEvents,
@@ -91,5 +111,7 @@ export function useEvents() {
     updateEventById,
     appendEvent,
     deleteActiveEvent,
+    deleteEventById,
+    togglePinById,
   };
 }
