@@ -14,9 +14,6 @@ export default async function handler(req, res) {
   }
 
   // ── Config par locale ────────────────────────────────────────────────────
-  // outputLang  : langue de la citation générée
-  // geoLit      : vivier littéraire prioritaire lié à la zone géo
-  // proverbs    : tradition orale/proverbiale locale pour les citations anonymes
   const LOCALE_CONFIG = {
     fr: {
       outputLang: 'French (français)',
@@ -36,7 +33,6 @@ export default async function handler(req, res) {
     },
   };
 
-  // Fallback anglais si locale non supportée
   const cfg = LOCALE_CONFIG[locale] ?? LOCALE_CONFIG.en;
 
   // ── Urgence selon les jours restants ─────────────────────────────────────
@@ -48,9 +44,6 @@ export default async function handler(req, res) {
     daysLeft <= 90  ? 'determined and steady — the journey is underway' :
                       'patient, visionary and inspiring — a long road ahead';
 
-  // ── Prompt ────────────────────────────────────────────────────────────────
-  // On guide le modèle avec une priorité explicite sur les sources
-  // pour éviter les citations génériques ou fausses attributions
   const systemPrompt = `You are a specialist in literary quotes and inspirational citations.
 
 Your task: generate ONE short quote (max 250 characters) written entirely in ${cfg.outputLang}, perfectly suited to the theme and urgency level provided.
@@ -83,7 +76,7 @@ Locale: ${locale}`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         max_tokens: 150,
-        temperature: 0.85, // Un peu de créativité sans dériver
+        temperature: 0.85,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
@@ -97,7 +90,7 @@ Locale: ${locale}`;
       try {
         const err = await response.json();
         message = err?.error?.message ?? message;
-      } catch { /* réponse non-JSON */ }
+      } catch { /* non-JSON response */ }
       return res.status(response.status).json({ error: message });
     }
 
@@ -119,7 +112,6 @@ Locale: ${locale}`;
       return res.status(502).json({ error: 'Incomplete quote format' });
     }
 
-    // Nettoyage : trim et suppression des guillemets externes si le modèle en ajoute
     quote.text   = quote.text.trim().replace(/^["«]|["»]$/g, '');
     quote.author = quote.author.trim();
 

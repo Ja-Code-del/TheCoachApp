@@ -6,11 +6,11 @@ export async function fetchUnsplashImage(theme) {
   return await res.json();
 }
 
-export async function fetchAIQuote(theme, daysLeft) {
+export async function fetchAIQuote(theme, daysLeft, locale = 'fr') {
   const res = await fetch(`${BASE_URL}/api/quote`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ theme, daysLeft }),
+    body: JSON.stringify({ theme, daysLeft, locale }),
   });
   if (!res.ok) throw new Error(`Quote API error: ${res.status}`);
   return await res.json();

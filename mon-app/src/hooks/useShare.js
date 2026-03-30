@@ -1,15 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import html2canvas from 'html2canvas';
 
 export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
+  const { t } = useTranslation();
   const [isSharing, setIsSharing] = useState(false);
   const [shareError, setShareError] = useState(null);
 
   // Auto-clear shareError après 4s
   useEffect(() => {
     if (!shareError) return;
-    const t = setTimeout(() => setShareError(null), 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setShareError(null), 4000);
+    return () => clearTimeout(timer);
   }, [shareError]);
 
   // Ref pour stabiliser handleShare sans le recréer à chaque frappe
@@ -32,8 +34,8 @@ export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
         await navigator.share({
           files: [file],
           title: isJourJ
-            ? `Jour J — ${evt.eventName || evt.theme}`
-            : `Plus que ${daysLeft} jours — ${evt.eventName || evt.theme}`,
+            ? t('share.titleJourJ', { name: evt.eventName || evt.theme })
+            : t('share.titleDays', { count: daysLeft, name: evt.eventName || evt.theme }),
           text: `"${evt.quote?.text}" — ${evt.quote?.author}`,
         });
       } else {
@@ -50,12 +52,12 @@ export function useShare(shareCardRef, activeEvent, daysLeft, isJourJ) {
     } catch (e) {
       if (e.name !== 'AbortError') {
         console.error('Erreur partage:', e);
-        setShareError("Impossible de partager ou télécharger l'image.");
+        setShareError(t('errors.share'));
       }
     } finally {
       setIsSharing(false);
     }
-  }, [shareCardRef, daysLeft, isJourJ]);
+  }, [shareCardRef, daysLeft, isJourJ, t]);
 
   return { handleShare, isSharing, shareError };
 }

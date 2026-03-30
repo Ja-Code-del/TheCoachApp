@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fetchAIQuote, fetchUnsplashImage } from '../lib/api';
 import { calcDaysLeft } from '../lib/utils';
 
 export function useMediaGeneration(activeEvent, updateEventById) {
+  const { t, i18n } = useTranslation();
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [quoteError, setQuoteError] = useState(null);
@@ -19,15 +21,15 @@ export function useMediaGeneration(activeEvent, updateEventById) {
     setQuoteError(null);
     try {
       const days = calcDaysLeft(evt.targetDate);
-      const q = await fetchAIQuote(evt.theme, days);
+      const q = await fetchAIQuote(evt.theme, days, i18n.language);
       updateEventById(eventId, { quote: q });
     } catch (e) {
       console.error('Erreur citation:', e);
-      setQuoteError("Impossible de générer la citation.");
+      setQuoteError(t('errors.quoteGeneration'));
     } finally {
       setIsLoadingQuote(false);
     }
-  }, [updateEventById]);
+  }, [updateEventById, i18n.language, t]);
 
   const loadImage = useCallback(async (eventOverride) => {
     const evt = eventOverride || activeEventRef.current;

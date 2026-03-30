@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Analytics } from '@vercel/analytics/react';
 import { useEvents } from './hooks/useEvents';
 import { useCarousel } from './hooks/useCarousel';
@@ -13,6 +14,7 @@ import { FONTS } from './constants/fonts';
 import { calcDaysLeft, DEFAULT_EVENT } from './lib/utils';
 
 function App() {
+  const { t } = useTranslation();
   const shareCardRef = useRef(null);
 
   const [isFirstLaunch, setIsFirstLaunch] = useState(() => !localStorage.getItem('hasLaunched'));
@@ -94,7 +96,7 @@ function App() {
               <div className="absolute inset-0 z-20 rounded-[3rem] pointer-events-none flex items-end justify-center pb-20">
                 <div className="flex items-center gap-2 bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full">
                   <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  <span className="text-[10px] text-white/60 uppercase tracking-widest">Nouvelle image…</span>
+                  <span className="text-[10px] text-white/60 uppercase tracking-widest">{t('display.newImage')}</span>
                 </div>
               </div>
             )}
