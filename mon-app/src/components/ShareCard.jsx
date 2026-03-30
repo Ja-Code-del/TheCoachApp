@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const seededRand = (i, offset = 0) => Math.abs(Math.sin(i * 127.1 + offset * 311.7));
 
@@ -35,14 +36,15 @@ function Confetti() {
   );
 }
 
-function formatDate(targetDate) {
+function formatDate(targetDate, locale) {
   if (!targetDate) return '';
   const [y, m, d] = targetDate.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(y, m - 1, d).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export default function ShareCard({ cardRef, daysLeft, theme, quote, bgImage, targetDate, font, isJourJ }) {
-  const formattedDate = formatDate(targetDate);
+  const { t, i18n } = useTranslation();
+  const formattedDate = formatDate(targetDate, i18n.language);
 
   return (
     <div style={{ position: 'fixed', left: '-9999px', top: '0', zIndex: -1 }}>
@@ -68,7 +70,7 @@ export default function ShareCard({ cardRef, daysLeft, theme, quote, bgImage, ta
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase', opacity: 0.4 }}>
-              {isJourJ ? "🎉 C'est le grand jour" : 'Compte à rebours'}
+              {isJourJ ? t('share.jourJHeader') : t('share.header')}
             </span>
             {theme && <span style={{ fontSize: '15px', fontWeight: 600, opacity: 0.85, letterSpacing: '0.02em' }}>{theme}</span>}
           </div>
@@ -76,12 +78,12 @@ export default function ShareCard({ cardRef, daysLeft, theme, quote, bgImage, ta
             {isJourJ ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '80px', lineHeight: 1, fontWeight: font?.numberStyle?.fontWeight || 900, textShadow: '0 4px 30px rgba(255,215,0,0.5)', filter: 'drop-shadow(0 0 20px rgba(255,215,0,0.4))' }}>✦</span>
-                <span style={{ fontSize: '36px', fontWeight: font?.numberStyle?.fontWeight || 900, letterSpacing: '-0.02em', textShadow: '0 2px 20px rgba(255,255,255,0.3)' }}>Jour J</span>
+                <span style={{ fontSize: '36px', fontWeight: font?.numberStyle?.fontWeight || 900, letterSpacing: '-0.02em', textShadow: '0 2px 20px rgba(255,255,255,0.3)' }}>{t('share.jourJ')}</span>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '110px', lineHeight: 1, fontWeight: font?.numberStyle?.fontWeight || 900, letterSpacing: '-0.04em', textShadow: '0 4px 30px rgba(0,0,0,0.4)' }}>{daysLeft}</span>
-                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', opacity: 0.5 }}>Jours restants</span>
+                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.4em', textTransform: 'uppercase', opacity: 0.5 }}>{t('share.daysLeft')}</span>
               </div>
             )}
           </div>
