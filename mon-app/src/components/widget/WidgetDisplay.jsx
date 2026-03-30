@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGear, faPlus, faImage, faRotate, faShareNodes } from '@fortawesome/free-solid-svg-icons';
 import Spinner from '../Spinner';
@@ -9,6 +10,8 @@ export default function WidgetDisplay({
   isSharing, shareError,
   onAddEvent, onOpenSettings, onRefreshImage, onRefreshQuote, onShare,
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="relative z-10 p-10 h-full flex flex-col justify-between items-center text-center">
       {/* Header */}
@@ -27,21 +30,21 @@ export default function WidgetDisplay({
         </div>
       </div>
 
-      {/* Chiffre */}
+      {/* Counter */}
       <div className="flex flex-col items-center">
         <span className="text-8xl drop-shadow-2xl" style={currentFont.numberStyle}>{daysLeft}</span>
-        <span className="text-xs uppercase tracking-[0.5em] opacity-50 mt-2" style={currentFont.labelStyle}>Jours restants</span>
+        <span className="text-xs uppercase tracking-[0.5em] opacity-50 mt-2" style={currentFont.labelStyle}>{t('display.daysLeft')}</span>
         {(activeEvent.eventName || activeEvent.theme) && (
           <span className="mt-2 text-xs opacity-40 italic">— {activeEvent.eventName || activeEvent.theme}</span>
         )}
       </div>
 
-      {/* Citation */}
+      {/* Quote */}
       <div className="w-full bg-black/20 backdrop-blur-md p-6 rounded-[2rem] border border-white/10 shadow-inner">
         {isLoadingQuote ? (
           <div className="flex items-center justify-center gap-2 opacity-50">
             <Spinner />
-            <span className="text-sm">Génération en cours...</span>
+            <span className="text-sm">{t('display.generating')}</span>
           </div>
         ) : quoteError ? (
           <p className="text-sm text-red-300 italic">{quoteError}</p>
@@ -56,17 +59,17 @@ export default function WidgetDisplay({
         <button onClick={onRefreshQuote} disabled={isLoadingQuote}
           className="mt-4 flex items-center gap-1 text-[10px] uppercase tracking-widest opacity-40 hover:opacity-80 transition mx-auto disabled:cursor-not-allowed">
           <FontAwesomeIcon icon={faRotate} className={isLoadingQuote ? 'animate-spin' : ''} />
-          Nouvelle citation
+          {t('display.newQuote')}
         </button>
       </div>
 
-      {/* Partager */}
+      {/* Share */}
       <div className="w-full flex flex-col items-center gap-2">
         <button onClick={onShare} disabled={isSharing}
           className="w-full py-4 bg-white text-gray-900 font-bold rounded-2xl flex items-center justify-center gap-3 hover:scale-105 transition shadow-xl disabled:opacity-60 disabled:cursor-not-allowed">
           {isSharing
-            ? <><Spinner dark />Capture en cours...</>
-            : <><FontAwesomeIcon icon={faShareNodes} /> Partager le moment</>}
+            ? <><Spinner dark />{t('display.capturing')}</>
+            : <><FontAwesomeIcon icon={faShareNodes} /> {t('display.share')}</>}
         </button>
         {shareError && <p className="text-[10px] text-red-300 opacity-80">{shareError}</p>}
       </div>
