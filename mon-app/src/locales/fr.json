@@ -1,0 +1,58 @@
+{
+  "welcome": {
+    "title": "Bienvenue",
+    "subtitle": "Ton compte à rebours personnel,\navec des citations qui t'inspirent chaque jour.",
+    "howItWorks": "Comment ça marche",
+    "step1": "Choisis un thème et une date cible",
+    "step2": "Une citation et une image sont générées pour toi",
+    "step3": "Partage le moment avec tes proches",
+    "start": "Commencer →"
+  },
+  "jourJ": {
+    "header": "C'est le grand jour",
+    "title": "Jour J !",
+    "capturing": "Capture en cours...",
+    "capture": "Immortaliser ce moment"
+  },
+  "display": {
+    "daysLeft": "Jours restants",
+    "generating": "Génération en cours...",
+    "newQuote": "Nouvelle citation",
+    "share": "Partager le moment",
+    "capturing": "Capture en cours...",
+    "newImage": "Nouvelle image…"
+  },
+  "settings": {
+    "title": "Réglages",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "eventName": "Nom de l'événement :",
+    "eventPlaceholder": "ex: Mon mariage, Mon marathon...",
+    "theme": "Thème (pour l'IA) :",
+    "themePlaceholder": "ex: mariage élégant, marathon sportif...",
+    "themeHelp": "Utilisé pour générer l'image et la citation.",
+    "eventDate": "Événement le :",
+    "font": "Police :",
+    "loading": "Chargement...",
+    "save": "Enregistrer"
+  },
+  "share": {
+    "header": "Compte à rebours",
+    "jourJ": "Jour J",
+    "daysLeft": "Jours restants",
+    "jourJHeader": "🎉 C'est le grand jour",
+    "titleJourJ": "Jour J — {{name}}",
+    "titleDays": "Plus que {{count}} jours — {{name}}"
+  },
+  "errors": {
+    "quoteGeneration": "Impossible de générer la citation.",
+    "share": "Impossible de partager ou télécharger l'image."
+  },
+  "fonts": {
+    "moderne": "Moderne",
+    "impact": "Impact",
+    "elegant": "Élégant",
+    "litteraire": "Littéraire",
+    "tech": "Tech"
+  }
+}

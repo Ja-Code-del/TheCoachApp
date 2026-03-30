@@ -1,0 +1,58 @@
+{
+  "welcome": {
+    "title": "Welcome",
+    "subtitle": "Your personal countdown,\nwith quotes that inspire you every day.",
+    "howItWorks": "How it works",
+    "step1": "Choose a theme and a target date",
+    "step2": "A quote and an image are generated for you",
+    "step3": "Share the moment with your loved ones",
+    "start": "Get started →"
+  },
+  "jourJ": {
+    "header": "It's the big day",
+    "title": "The big day!",
+    "capturing": "Capturing...",
+    "capture": "Capture this moment"
+  },
+  "display": {
+    "daysLeft": "Days left",
+    "generating": "Generating...",
+    "newQuote": "New quote",
+    "share": "Share the moment",
+    "capturing": "Capturing...",
+    "newImage": "New image…"
+  },
+  "settings": {
+    "title": "Settings",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "eventName": "Event name:",
+    "eventPlaceholder": "e.g., My wedding, My marathon...",
+    "theme": "Theme (for AI):",
+    "themePlaceholder": "e.g., elegant wedding, sports marathon...",
+    "themeHelp": "Used to generate the image and quote.",
+    "eventDate": "Event on:",
+    "font": "Font:",
+    "loading": "Loading...",
+    "save": "Save"
+  },
+  "share": {
+    "header": "Countdown",
+    "jourJ": "The big day",
+    "daysLeft": "Days left",
+    "jourJHeader": "🎉 It's the big day",
+    "titleJourJ": "The big day — {{name}}",
+    "titleDays": "Only {{count}} days left — {{name}}"
+  },
+  "errors": {
+    "quoteGeneration": "Unable to generate the quote.",
+    "share": "Unable to share or download the image."
+  },
+  "fonts": {
+    "moderne": "Modern",
+    "impact": "Impact",
+    "elegant": "Elegant",
+    "litteraire": "Literary",
+    "tech": "Tech"
+  }
+}
