@@ -34,7 +34,12 @@ function App() {
   const { handleShare, isSharing, shareError } = useShare(shareCardRef, activeEvent, daysLeft, isJourJ);
 
   useEffect(() => { resetQuoteError(); }, [activeIndex, resetQuoteError]);
-  useEffect(() => { if (!isSettingsOpen) setConfirmDelete(false); }, [isSettingsOpen]);
+
+  // Fermer les réglages annule toujours une confirmation de suppression en cours.
+  const closeSettings = () => {
+    setIsSettingsOpen(false);
+    setConfirmDelete(false);
+  };
 
   const addEvent = () => {
     const newIndex = events.length;
@@ -43,7 +48,7 @@ function App() {
   };
 
   const handleSaveSettings = async () => {
-    setIsSettingsOpen(false);
+    closeSettings();
     await Promise.all([generateQuote(), loadImage()]);
   };
 
@@ -157,7 +162,7 @@ function App() {
                   isLoadingImage={isLoadingImage}
                   onUpdateEvent={updateActiveEvent}
                   onSave={handleSaveSettings}
-                  onClose={() => setIsSettingsOpen(false)}
+                  onClose={closeSettings}
                   onDelete={handleDelete}
                 />
               )}

@@ -5,7 +5,9 @@ const loadEvents = () => {
   try {
     const raw = localStorage.getItem('events');
     if (raw) return JSON.parse(raw);
-  } catch (_) {}
+  } catch {
+    /* localStorage illisible ou JSON invalide — on retombe sur l'événement par défaut */
+  }
   return [DEFAULT_EVENT()];
 };
 
