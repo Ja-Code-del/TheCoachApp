@@ -35,6 +35,7 @@
     "themePlaceholder": "e.g., elegant wedding, sports marathon...",
     "themeHelp": "Used to generate the image and quote.",
     "eventDate": "Event on:",
+    "language": "Language:",
     "font": "Font:",
     "loading": "Loading...",
     "save": "Save",

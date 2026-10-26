@@ -17,9 +17,15 @@ export default function WidgetSettings({
   isLoadingQuote, isLoadingImage,
   onUpdateEvent, onSave, onClose, onDelete,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [dateError, setDateError] = useState('');
   const minDate = getTomorrowStr();
+
+  const LANGUAGES = [
+    { code: 'fr', label: 'Français' },
+    { code: 'en', label: 'English' },
+  ];
+  const currentLang = i18n.language?.split('-')[0] || 'fr';
 
   const handleSave = () => {
     if (!activeEvent.targetDate || activeEvent.targetDate <= new Date().toISOString().split('T')[0]) {
@@ -85,6 +91,18 @@ export default function WidgetSettings({
             onChange={(e) => { setDateError(''); onUpdateEvent({ targetDate: e.target.value }); }}
             className={`bg-white/10 border p-4 rounded-2xl outline-none focus:ring-2 focus:ring-white/50 transition text-white ${dateError ? 'border-red-400/60' : 'border-white/20'}`} />
           {dateError && <p className="text-[10px] text-red-300 ml-1">{dateError}</p>}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] uppercase font-black tracking-widest opacity-40 ml-1">{t('settings.language')}</label>
+          <div className="grid grid-cols-2 gap-2">
+            {LANGUAGES.map((lang) => (
+              <button key={lang.code} type="button" onClick={() => i18n.changeLanguage(lang.code)}
+                className={`py-3 rounded-2xl border text-sm font-semibold transition-all ${currentLang === lang.code ? 'bg-white/20 border-white/50 shadow-inner' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                {lang.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">

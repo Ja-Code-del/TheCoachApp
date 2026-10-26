@@ -85,12 +85,27 @@ npm install
 Crée un fichier `.env.local` à la racine de `mon-app/` :
 
 ```env
-OPENAI_API_KEY=sk-...
+# Fournisseur de citations (au choix)
+OPENAI_API_KEY=sk-...          # OpenAI GPT-4o-mini (par défaut)
+# ANTHROPIC_API_KEY=sk-ant-... # Alternative : Claude (voir ci-dessous)
+
 UNSPLASH_ACCESS_KEY=...
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
 > `.env.local` est ignoré par git — ne commite jamais tes clés.
+
+**Choix du fournisseur de citations**
+
+L'API `/api/quote` sait appeler OpenAI **ou** Anthropic (Claude) :
+
+| Variable | Rôle |
+|----------|------|
+| `QUOTE_PROVIDER` | Force le fournisseur : `openai` ou `anthropic`. Si absent, Anthropic est utilisé dès qu'une `ANTHROPIC_API_KEY` est présente, sinon OpenAI. |
+| `OPENAI_MODEL` | Modèle OpenAI (défaut `gpt-4o-mini`). |
+| `ANTHROPIC_MODEL` | Modèle Claude (défaut `claude-haiku-5-5`). |
+
+> ⚠️ Il n'existe pas d'API Claude *gratuite* : « Claude gratuit » désigne l'app de chat, pas un point d'accès programmatique. Pour que l'app génère les citations avec Claude, il faut une clé API Anthropic (facturée à l'usage, modèle Haiku très bon marché).
 
 ### 3. Lancer en développement
 
@@ -143,9 +158,14 @@ Génère une citation inspirante via GPT-4o-mini, adaptée au nombre de jours re
 ```json
 {
   "theme": "marathon sportif",
-  "daysLeft": 12
+  "daysLeft": 12,
+  "locale": "fr",
+  "avoid": [{ "text": "...", "author": "..." }]
 }
 ```
+
+- `locale` : `fr` ou `en` — la citation est générée **dans cette langue** (défini par le sélecteur de langue dans les réglages). Les locales régionales (`fr-FR`) sont normalisées automatiquement.
+- `avoid` : citations récemment affichées (stockées en local), que le modèle doit éviter de resservir — c'est ce qui garantit des citations différentes d'un jour à l'autre.
 
 **Réponse :**
 ```json

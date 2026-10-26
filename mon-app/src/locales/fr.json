@@ -35,6 +35,7 @@
     "themePlaceholder": "ex: mariage élégant, marathon sportif...",
     "themeHelp": "Utilisé pour générer l'image et la citation.",
     "eventDate": "Événement le :",
+    "language": "Langue :",
     "font": "Police :",
     "loading": "Chargement...",
     "save": "Enregistrer",
